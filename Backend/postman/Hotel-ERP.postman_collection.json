@@ -1,0 +1,3774 @@
+{
+  "info": {
+    "_postman_id": "905c1362-3bce-4a62-9dc7-0464940faee8",
+    "name": "Somali Hotel ERP Backend - Complete API",
+    "description": "Complete Postman coverage for every NestJS controller endpoint. Run folders in order for the integrated workflow. Login stores the bearer token; Postman stores the HttpOnly refresh cookie automatically. Create requests capture IDs into collection variables. Mutating requests require an ADMIN bootstrap account for full coverage.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const iso = (offset) => { const d = new Date(); d.setUTCDate(d.getUTCDate() + offset); return d.toISOString().slice(0, 10); };",
+          "pm.collectionVariables.set('today', iso(0));",
+          "pm.collectionVariables.set('tomorrow', iso(1));",
+          "pm.collectionVariables.set('dayAfterTomorrow', iso(2));",
+          "pm.collectionVariables.set('reportFrom', iso(-30));",
+          "pm.collectionVariables.set('reportTo', iso(30));"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "floorId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "deletableFloorId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "roomTypeId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "deletableRoomTypeId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "roomId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "secondRoomId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "guestId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "reservationId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "cancelReservationId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "noShowReservationId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "serviceId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "chargeId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "paymentMethodId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "paymentId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "invoiceId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "expenseCategoryId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "expenseId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "housekeepingTaskId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "maintenanceId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "customRoleId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "deletableRoleId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "staffRoleId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "auditId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "today",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "tomorrow",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "dayAfterTomorrow",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "reportFrom",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "reportTo",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "floorNumber",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "deletableFloorNumber",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "01 - Health and Authentication",
+      "item": [
+        {
+          "name": "Liveness",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/health/live",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Readiness",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/health/ready",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Operational Metrics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Monitoring-Token",
+                "value": "{{monitoringToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/health/metrics",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"{{adminIdentifier}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) { const value = pm.response.json()[\"accessToken\"]; if (value) pm.collectionVariables.set(\"accessToken\", value); }",
+                  "pm.test('Access token returned', () => pm.expect(pm.response.json().accessToken).to.be.a('string').and.not.empty);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Current User",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/auth/me"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refresh Access Token",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/auth/refresh",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) { const value = pm.response.json()[\"accessToken\"]; if (value) pm.collectionVariables.set(\"accessToken\", value); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout Current Session",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/auth/logout"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login Again",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"{{adminIdentifier}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) { const value = pm.response.json()[\"accessToken\"]; if (value) pm.collectionVariables.set(\"accessToken\", value); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout All Sessions",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/auth/logout-all"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Final Login for Remaining Folders",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"{{adminIdentifier}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) { const value = pm.response.json()[\"accessToken\"]; if (value) pm.collectionVariables.set(\"accessToken\", value); }"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 - Hotel, Roles, and Users",
+      "item": [
+        {
+          "name": "Get Current Hotel",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/hotels/current"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Current Hotel",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/hotels/current",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+252 61 0000000\",\n  \"currencyCode\": \"USD\",\n  \"timezone\": \"Africa/Mogadishu\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Permissions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/roles/permissions"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Roles and Capture STAFF",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/roles"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);",
+                  "const roles = pm.response.json(); const staff = roles.find((r) => r.name === 'STAFF'); if (staff) pm.collectionVariables.set('staffRoleId', staff.id);",
+                  "pm.test('STAFF role is available', () => pm.expect(pm.collectionVariables.get('staffRoleId')).to.be.ok);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Custom Role",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/roles",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"POSTMAN SUPERVISOR {{$timestamp}}\",\n  \"description\": \"Created by Postman API tests\",\n  \"permissionKeys\": [\n    \"room.view\",\n    \"guest.view\",\n    \"reservation.view\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) { const value = pm.response.json()[\"id\"]; if (value) pm.collectionVariables.set(\"customRoleId\", value); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Roles",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/roles"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Custom Role",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/roles/{{customRoleId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Updated by the complete Postman collection\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Replace Custom Role Permissions",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/roles/{{customRoleId}}/permissions",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"permissionKeys\": [\n    \"room.view\",\n    \"guest.view\",\n    \"reservation.view\",\n    \"availability.view\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Deletable Role",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/roles",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"POSTMAN TEMP {{$timestamp}}\",\n  \"description\": \"Safe role deactivation test\",\n  \"permissionKeys\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) { const value = pm.response.json()[\"id\"]; if (value) pm.collectionVariables.set(\"deletableRoleId\", value); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Deactivate Unused Custom Role",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/roles/{{deletableRoleId}}"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/users",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"postman+{{$timestamp}}@example.com\",\n  \"username\": \"postman_{{$timestamp}}\",\n  \"fullName\": \"Postman Test User\",\n  \"password\": \"PostmanTest!12345\",\n  \"roleIds\": [\n    \"{{staffRoleId}}\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) { const value = pm.response.json()[\"id\"]; if (value) pm.collectionVariables.set(\"userId\", value); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/users"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get User",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/users/{{userId}}"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update User",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/users/{{userId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Postman Test User Updated\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Assign User Roles",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/users/{{userId}}/roles",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roleIds\": [\n    \"{{staffRoleId}}\",\n    \"{{customRoleId}}\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reset User Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/users/{{userId}}/reset-password",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password\": \"PostmanReset!12345\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Unlock User",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/users/{{userId}}/unlock"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Deactivate User",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/users/{{userId}}"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Restore User",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/users/{{userId}}/restore"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 - Floors, Room Types, and Rooms",
+      "item": [
+        {
+          "name": "List Floors and Choose Test Numbers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/floors"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);",
+                  "const used = new Set(pm.response.json().map((floor) => floor.number)); const free = []; for (let n = 300; n >= -20 && free.length < 2; n -= 1) if (!used.has(n)) free.push(n); pm.expect(free.length, 'two unused floor numbers').to.equal(2); pm.collectionVariables.set('floorNumber', free[0]); pm.collectionVariables.set('deletableFloorNumber', free[1]);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Floor",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/floors",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"number\": {{floorNumber}},\n  \"name\": \"Postman Integration Floor\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) { const value = pm.response.json()[\"id\"]; if (value) pm.collectionVariables.set(\"floorId\", value); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Floor",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/floors/{{floorId}}"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Floor",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/floors/{{floorId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Integration Floor Updated\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Empty Floor",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/floors",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"number\": {{deletableFloorNumber}},\n  \"name\": \"Postman Deletion Test\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) { const value = pm.response.json()[\"id\"]; if (value) pm.collectionVariables.set(\"deletableFloorId\", value); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete Empty Floor",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/floors/{{deletableFloorId}}"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Room Type",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/room-types",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"PM{{$timestamp}}\",\n  \"name\": \"Postman Standard\",\n  \"description\": \"Integration test room type\",\n  \"capacityAdults\": 2,\n  \"capacityChildren\": 1,\n  \"basePrice\": \"100.00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) { const value = pm.response.json()[\"id\"]; if (value) pm.collectionVariables.set(\"roomTypeId\", value); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Room Types",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/room-types"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Room Type",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/room-types/{{roomTypeId}}"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Room Type",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/room-types/{{roomTypeId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"basePrice\": \"110.00\",\n  \"description\": \"Updated integration test room type\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Deactivatable Room Type",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/room-types",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"DEL{{$timestamp}}\",\n  \"name\": \"Postman Temporary Type\",\n  \"capacityAdults\": 1,\n  \"capacityChildren\": 0,\n  \"basePrice\": \"50.00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) { const value = pm.response.json()[\"id\"]; if (value) pm.collectionVariables.set(\"deletableRoomTypeId\", value); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Deactivate Unused Room Type",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/room-types/{{deletableRoomTypeId}}"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Restore Room Type",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/room-types/{{deletableRoomTypeId}}/restore"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Primary Room",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/rooms",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roomNumber\": \"P{{$timestamp}}A\",\n  \"roomTypeId\": \"{{roomTypeId}}\",\n  \"floorId\": \"{{floorId}}\",\n  \"notes\": \"Primary Postman workflow room\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) { const value = pm.response.json()[\"id\"]; if (value) pm.collectionVariables.set(\"roomId\", value); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Secondary Room",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/rooms",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roomNumber\": \"P{{$timestamp}}B\",\n  \"roomTypeId\": \"{{roomTypeId}}\",\n  \"floorId\": \"{{floorId}}\",\n  \"notes\": \"Secondary lifecycle room\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) { const value = pm.response.json()[\"id\"]; if (value) pm.collectionVariables.set(\"secondRoomId\", value); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Rooms with Filters",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/rooms?page=1&pageSize=25&search=P&floorId={{floorId}}&roomTypeId={{roomTypeId}}&status=AVAILABLE&isActive=true"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Room",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/rooms/{{roomId}}"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Room",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/rooms/{{roomId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"Updated by Postman complete endpoint suite\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Set Room to Maintenance",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/rooms/{{secondRoomId}}/status",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"MAINTENANCE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Set Room Back to Available",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/rooms/{{secondRoomId}}/status",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"AVAILABLE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Deactivate Secondary Room",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/rooms/{{secondRoomId}}"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Restore Secondary Room",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/rooms/{{secondRoomId}}/restore"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04 - Guests, Availability, and Reservations",
+      "item": [
+        {
+          "name": "Create Guest",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/guests",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Amina Postman {{$timestamp}}\",\n  \"phone\": \"+252611234567\",\n  \"email\": \"guest+{{$timestamp}}@example.com\",\n  \"passportNumber\": \"PM{{$timestamp}}\",\n  \"nationality\": \"Somali\",\n  \"address\": \"Mogadishu\",\n  \"notes\": \"Created by Postman\",\n  \"allowPossibleDuplicate\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) { const value = pm.response.json()[\"id\"]; if (value) pm.collectionVariables.set(\"guestId\", value); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Guests",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/guests?page=1&pageSize=25&search=Postman"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Guest",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/guests/{{guestId}}"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Guest",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/guests/{{guestId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"Guest profile updated by Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Search Room Availability",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/availability/rooms?checkInDate={{today}}&checkOutDate={{dayAfterTomorrow}}&roomTypeId={{roomTypeId}}&floorId={{floorId}}&adults=1&children=0"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Main Reservation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/reservations",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"guestId\": \"{{guestId}}\",\n  \"checkInDate\": \"{{today}}\",\n  \"checkOutDate\": \"{{dayAfterTomorrow}}\",\n  \"adults\": 1,\n  \"children\": 0,\n  \"roomIds\": [\n    \"{{roomId}}\"\n  ],\n  \"notes\": \"Main end-to-end Postman stay\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) { const value = pm.response.json()[\"id\"]; if (value) pm.collectionVariables.set(\"reservationId\", value); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Reservations with Filters",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/reservations?page=1&pageSize=25&guestId={{guestId}}&roomId={{roomId}}&status=PENDING&arrivalFrom={{today}}&arrivalTo={{tomorrow}}"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Reservation",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/reservations/{{reservationId}}"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Reservation",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/reservations/{{reservationId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"adults\": 2,\n  \"notes\": \"Reservation updated before confirmation\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Replace Reservation Room",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/reservations/{{reservationId}}/rooms",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roomIds\": [\n    \"{{secondRoomId}}\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Restore Primary Reservation Room",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/reservations/{{reservationId}}/rooms",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roomIds\": [\n    \"{{roomId}}\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Apply Reservation Discount",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/reservations/{{reservationId}}/discount",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": \"10.00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirm Main Reservation",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/reservations/{{reservationId}}/confirm"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Reservation to Cancel",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/reservations",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"guestId\": \"{{guestId}}\",\n  \"checkInDate\": \"{{today}}\",\n  \"checkOutDate\": \"{{dayAfterTomorrow}}\",\n  \"adults\": 1,\n  \"children\": 0,\n  \"roomIds\": [\n    \"{{secondRoomId}}\"\n  ],\n  \"notes\": \"Cancellation endpoint test\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) { const value = pm.response.json()[\"id\"]; if (value) pm.collectionVariables.set(\"cancelReservationId\", value); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirm Reservation to Cancel",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/reservations/{{cancelReservationId}}/confirm"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cancel Reservation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/reservations/{{cancelReservationId}}/cancel",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"note\": \"Cancelled by complete Postman suite\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Reservation for No-show",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/reservations",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"guestId\": \"{{guestId}}\",\n  \"checkInDate\": \"{{today}}\",\n  \"checkOutDate\": \"{{dayAfterTomorrow}}\",\n  \"adults\": 1,\n  \"children\": 0,\n  \"roomIds\": [\n    \"{{secondRoomId}}\"\n  ],\n  \"notes\": \"No-show endpoint test\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) { const value = pm.response.json()[\"id\"]; if (value) pm.collectionVariables.set(\"noShowReservationId\", value); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirm No-show Reservation",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/reservations/{{noShowReservationId}}/confirm"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mark Reservation No-show",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/reservations/{{noShowReservationId}}/no-show",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"note\": \"Guest did not arrive\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05 - Stay, Services, Charges, and Folio",
+      "item": [
+        {
+          "name": "Create Service",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/services",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Airport Transfer {{$timestamp}}\",\n  \"description\": \"Integration test service\",\n  \"defaultPrice\": \"25.00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) { const value = pm.response.json()[\"id\"]; if (value) pm.collectionVariables.set(\"serviceId\", value); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Services",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/services"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Service",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/services/{{serviceId}}"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Service",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/services/{{serviceId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"defaultPrice\": \"30.00\",\n  \"description\": \"Updated integration test service\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Deactivate Service",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/services/{{serviceId}}"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Restore Service",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/services/{{serviceId}}/restore"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Check In Reservation",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/reservations/{{reservationId}}/check-in"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add Service Charge to Active Stay",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/reservations/{{reservationId}}/charges",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serviceId\": \"{{serviceId}}\",\n  \"quantity\": \"1.00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) { const value = pm.response.json()[\"id\"]; if (value) pm.collectionVariables.set(\"chargeId\", value); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Reservation Charges",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/reservations/{{reservationId}}/charges"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Reservation Folio",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/reservations/{{reservationId}}/folio"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Void Service Charge",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/charges/{{chargeId}}/void",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Testing retained charge void history\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add Final Service Charge",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/reservations/{{reservationId}}/charges",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serviceId\": \"{{serviceId}}\",\n  \"quantity\": \"1.00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Check Out Reservation",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/reservations/{{reservationId}}/check-out"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "06 - Payments, Invoices, and Expenses",
+      "item": [
+        {
+          "name": "Create Payment Method",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/payment-methods",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman EVC {{$timestamp}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) { const value = pm.response.json()[\"id\"]; if (value) pm.collectionVariables.set(\"paymentMethodId\", value); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Payment Methods",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/payment-methods"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Payment Method",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/payment-methods/{{paymentMethodId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman EVC Updated {{$timestamp}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Deactivate Payment Method",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/payment-methods/{{paymentMethodId}}"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Restore Payment Method",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/payment-methods/{{paymentMethodId}}/restore"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Issue Invoice After Checkout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/reservations/{{reservationId}}/invoice"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) { const value = pm.response.json()[\"invoice\"][\"id\"]; if (value) pm.collectionVariables.set(\"invoiceId\", value); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Invoices",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/invoices"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Invoice",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/invoices/{{invoiceId}}"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/payments",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reservationId\": \"{{reservationId}}\",\n  \"paymentMethodId\": \"{{paymentMethodId}}\",\n  \"requestKey\": \"{{$guid}}\",\n  \"amount\": \"25.00\",\n  \"reference\": \"POSTMAN-PAY\",\n  \"note\": \"Integration payment\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) { const value = pm.response.json()[\"payment\"][\"id\"]; if (value) pm.collectionVariables.set(\"paymentId\", value); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Payment",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/payments/{{paymentId}}"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Reservation Payments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/reservations/{{reservationId}}/payments"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refund Entire Test Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/payments/{{paymentId}}/refunds",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"requestKey\": \"{{$guid}}\",\n  \"amount\": \"25.00\",\n  \"reason\": \"Full refund before invoice void\",\n  \"reference\": \"POSTMAN-REFUND\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Void Invoice",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/invoices/{{invoiceId}}/void",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Testing invoice void endpoint after full refund\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Expense Category",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/expense-categories",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Operations {{$timestamp}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) { const value = pm.response.json()[\"id\"]; if (value) pm.collectionVariables.set(\"expenseCategoryId\", value); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Expense Categories",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/expense-categories"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Expense Category",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/expense-categories/{{expenseCategoryId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Operations Updated {{$timestamp}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Deactivate Expense Category",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/expense-categories/{{expenseCategoryId}}"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Restore Expense Category",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/expense-categories/{{expenseCategoryId}}/restore"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Expense",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/expenses",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"categoryId\": \"{{expenseCategoryId}}\",\n  \"paymentMethodId\": \"{{paymentMethodId}}\",\n  \"requestKey\": \"{{$guid}}\",\n  \"amount\": \"30.00\",\n  \"expenseDate\": \"{{today}}\",\n  \"description\": \"Generator fuel for Postman test\",\n  \"reference\": \"POSTMAN-EXP\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) { const value = pm.response.json()[\"id\"]; if (value) pm.collectionVariables.set(\"expenseId\", value); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Expenses",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/expenses"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Expense",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/expenses/{{expenseId}}"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reverse Expense",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/expenses/{{expenseId}}/reverse",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Testing expense reversal history\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "07 - Housekeeping and Maintenance",
+      "item": [
+        {
+          "name": "List Housekeeping Tasks and Capture Stay Task",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/housekeeping/tasks"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);",
+                  "const tasks = pm.response.json(); const task = tasks.find((t) => t.reservationId === pm.collectionVariables.get('reservationId')); if (task) pm.collectionVariables.set('housekeepingTaskId', task.id);",
+                  "pm.test('Checkout housekeeping task found', () => pm.expect(pm.collectionVariables.get('housekeepingTaskId')).to.be.ok);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Housekeeping Task",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/housekeeping/tasks/{{housekeepingTaskId}}"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Housekeeping Task",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/housekeeping/tasks/{{housekeepingTaskId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"assignedToId\": \"{{userId}}\",\n  \"notes\": \"Assigned and updated by Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Start Housekeeping Task",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/housekeeping/tasks/{{housekeepingTaskId}}/start"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Complete Housekeeping Task",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/housekeeping/tasks/{{housekeepingTaskId}}/complete"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Maintenance Request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/maintenance/requests",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roomId\": \"{{secondRoomId}}\",\n  \"problem\": \"Air conditioner inspection required\",\n  \"assignedToId\": \"{{userId}}\",\n  \"notes\": \"Created by Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) { const value = pm.response.json()[\"id\"]; if (value) pm.collectionVariables.set(\"maintenanceId\", value); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Maintenance Requests",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/maintenance/requests"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Maintenance Request",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/maintenance/requests/{{maintenanceId}}"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Maintenance Request",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/maintenance/requests/{{maintenanceId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"problem\": \"Air conditioner filter and thermostat inspection\",\n  \"notes\": \"Scope updated by Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Start Maintenance Request",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/maintenance/requests/{{maintenanceId}}/start"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Complete Maintenance Request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/maintenance/requests/{{maintenanceId}}/complete",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cost\": \"15.00\",\n  \"notes\": \"Inspection complete\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "08 - Dashboard, Reports, and Audit Logs",
+      "item": [
+        {
+          "name": "Dashboard Summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/dashboard/summary"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Revenue Report",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/reports/revenue?from={{reportFrom}}&to={{reportTo}}"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Expense Report",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/reports/expenses?from={{reportFrom}}&to={{reportTo}}"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Occupancy Report",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/reports/occupancy?from={{reportFrom}}&to={{reportTo}}"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reservations Report",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/reports/reservations?from={{reportFrom}}&to={{reportTo}}"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Payments Report",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/reports/payments?from={{reportFrom}}&to={{reportTo}}"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Outstanding Balances Report",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/reports/outstanding-balances"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Audit Logs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/audit-logs?entityType=Reservation&page=1&limit=50"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);",
+                  "const value = pm.response.json(); const entries = value.data || value.items || []; if (entries[0]) pm.collectionVariables.set('auditId', entries[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Audit Log",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/audit-logs/{{auditId}}"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is successful', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]));",
+                  "pm.test('Response time is under 5 seconds', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "if (pm.response.code !== 204) pm.test('Response is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

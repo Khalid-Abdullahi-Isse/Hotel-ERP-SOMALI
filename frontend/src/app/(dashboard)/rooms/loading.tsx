@@ -1,0 +1,2 @@
+import { Skeleton } from "@/components/ui/skeleton";
+export default function RoomsLoading() { return <div className="space-y-7"><div><Skeleton className="h-9 w-40" /><Skeleton className="mt-2 h-5 w-96 max-w-full" /></div><div className="overflow-hidden rounded-xl border bg-card"><div className="p-4"><Skeleton className="h-9 w-80 max-w-full" /></div><div className="border-t p-4 space-y-4">{Array.from({ length: 7 }, (_, i) => <Skeleton key={i} className="h-11 w-full" />)}</div></div></div>; }

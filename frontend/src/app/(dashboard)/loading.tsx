@@ -1,0 +1,2 @@
+import { Skeleton } from "@/components/ui/skeleton";
+export default function DashboardLoading() { return <div className="space-y-7"><div><Skeleton className="h-9 w-56" /><Skeleton className="mt-2 h-5 w-96 max-w-full" /></div><Skeleton className="h-48 w-full" /><div className="grid gap-4 md:grid-cols-3"><Skeleton className="h-44" /><Skeleton className="h-44" /><Skeleton className="h-44" /></div></div>; }

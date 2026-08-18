@@ -1,0 +1,38 @@
+services:
+  api:
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${APP_DATABASE_URL:?Set APP_DATABASE_URL for the restricted hotel_erp_app role}
+      SWAGGER_ENABLED: 'false'
+      AUTH_COOKIE_SECURE: 'true'
+      TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
+      MONITORING_TOKEN: ${MONITORING_TOKEN:?Set MONITORING_TOKEN in .env}
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,noexec,nosuid,nodev
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          memory: 128M
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '5'
+
+  postgres:
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          memory: 512M
+    logging:
+      driver: json-file
+      options:
+        max-size: 20m
+        max-file: '5'
