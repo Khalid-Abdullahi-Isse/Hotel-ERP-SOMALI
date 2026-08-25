@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { PERMISSIONS } from '../auth/auth.constants.js';
 import type { RequestUser } from '../auth/auth.types.js';
@@ -6,6 +6,7 @@ import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import { RequirePermissions } from '../common/decorators/permissions.decorator.js';
 import { CreateExpenseDto } from './dto/create-expense.dto.js';
 import { ExpenseCategoryDto } from './dto/expense-category.dto.js';
+import { ListExpensesQueryDto } from './dto/list-expenses-query.dto.js';
 import { ReverseExpenseDto } from './dto/reverse-expense.dto.js';
 import { ExpensesService } from './expenses.service.js';
 @ApiTags('expenses')
@@ -49,9 +50,10 @@ export class ExpensesController {
     return this.expenses.category(id, undefined, true, actor);
   }
   @Get('expenses') @RequirePermissions(PERMISSIONS.EXPENSE_VIEW) list(
+    @Query() query: ListExpensesQueryDto,
     @CurrentUser() actor: RequestUser,
   ) {
-    return this.expenses.list(actor);
+    return this.expenses.list(query, actor);
   }
   @Post('expenses') @RequirePermissions(PERMISSIONS.EXPENSE_CREATE) create(
     @Body() dto: CreateExpenseDto,

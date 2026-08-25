@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { PERMISSIONS } from '../auth/auth.constants.js';
 import type { RequestUser } from '../auth/auth.types.js';
@@ -9,14 +9,18 @@ import {
   CreateMaintenanceDto,
   UpdateMaintenanceDto,
 } from './dto/maintenance.dto.js';
+import { ListMaintenanceQueryDto } from './dto/list-maintenance-query.dto.js';
 import { MaintenanceService } from './maintenance.service.js';
 @ApiTags('maintenance')
 @ApiBearerAuth()
 @Controller('maintenance/requests')
 export class MaintenanceController {
   constructor(private readonly service: MaintenanceService) {}
-  @Get() @RequirePermissions(PERMISSIONS.MAINTENANCE_VIEW) list(@CurrentUser() actor: RequestUser) {
-    return this.service.list(actor);
+  @Get() @RequirePermissions(PERMISSIONS.MAINTENANCE_VIEW) list(
+    @Query() query: ListMaintenanceQueryDto,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    return this.service.list(query, actor);
   }
   @Post() @RequirePermissions(PERMISSIONS.MAINTENANCE_CREATE) create(
     @Body() dto: CreateMaintenanceDto,

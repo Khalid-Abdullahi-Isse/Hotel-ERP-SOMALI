@@ -7,7 +7,6 @@ import {
   ArrowRight,
   CalendarDays,
   CheckCircle2,
-  CreditCard,
   LoaderCircle,
   UserRound,
 } from "lucide-react";
@@ -49,23 +48,15 @@ import type { ReservationRoomTypeOption } from "@/types/reservation";
 const steps = [
   { title: "Stay details", icon: CalendarDays },
   { title: "Guest information", icon: UserRound },
-  { title: "Payment", icon: CreditCard },
-  { title: "Confirmation", icon: CheckCircle2 },
+  { title: "Review", icon: CheckCircle2 },
 ] as const;
 const stepFields: Array<Array<FieldPath<ReservationFormValues>>> = [
   ["checkIn", "checkOut", "adults", "children", "roomType", "roomNumber"],
   ["guestName", "phone", "email", "nationality", "identification", "notes"],
-  ["paymentMethod", "deposit"],
   [],
 ];
 function FieldError({ message }: { message?: string }) {
   return message ? <p className="text-xs text-destructive">{message}</p> : null;
-}
-function pretty(value: string) {
-  return value
-    .split("_")
-    .map((word) => word[0].toUpperCase() + word.slice(1))
-    .join(" ");
 }
 function dateInputValue(offsetDays: number) {
   const date = new Date();
@@ -75,8 +66,24 @@ function dateInputValue(offsetDays: number) {
 
 export function ReservationForm({
   roomTypes,
+  currency,
+  existingGuest,
+  walkIn = false,
+  canCheckIn = false,
+  canConfirm = false,
 }: {
   roomTypes: ReservationRoomTypeOption[];
+  currency: "USD" | "SOS";
+  existingGuest?: {
+    id: string;
+    name: string;
+    phone: string;
+    email?: string;
+    nationality: string;
+  };
+  walkIn?: boolean;
+  canCheckIn?: boolean;
+  canConfirm?: boolean;
 }) {
   const [step, setStep] = useState(0);
   const [validated, setValidated] = useState(false);
@@ -91,19 +98,17 @@ export function ReservationForm({
   } = useForm<ReservationFormValues>({
     resolver: zodResolver(reservationSchema),
     defaultValues: {
-      checkIn: dateInputValue(1),
-      checkOut: dateInputValue(2),
+      checkIn: dateInputValue(walkIn ? 0 : 1),
+      checkOut: dateInputValue(walkIn ? 1 : 2),
       adults: 1,
       children: 0,
       roomType: "",
       roomNumber: "",
-      guestName: "",
-      phone: "",
-      email: "",
-      nationality: "Somali",
+      guestName: existingGuest?.name ?? "",
+      phone: existingGuest?.phone ?? "",
+      email: existingGuest?.email ?? "",
+      nationality: existingGuest?.nationality ?? "Somali",
       identification: "",
-      paymentMethod: "cash",
-      deposit: 0,
       notes: "",
     },
     mode: "onBlur",
@@ -117,12 +122,14 @@ export function ReservationForm({
       values.roomType ?? "",
       values.adults ?? 1,
       values.children ?? 0,
+      walkIn,
     ),
     queryFn: () =>
       availabilityService.search({
         checkInDate: values.checkIn ?? "",
         checkOutDate: values.checkOut ?? "",
         roomTypeId: values.roomType ?? "",
+        readyOnly: walkIn,
         adults: values.adults ?? 1,
         children: values.children ?? 0,
       }),
@@ -145,9 +152,16 @@ export function ReservationForm({
   const mutation = useMutation({
     mutationFn: async (formValues: ReservationFormValues) => {
       if (!createdReservationId.current) {
-        const created = await reservationService.create(formValues);
+        const created = await reservationService.create(
+          formValues,
+          existingGuest?.id,
+        );
         createdReservationId.current = created.id;
+        if (!canConfirm) return created;
       }
+
+      if (!canConfirm)
+        return reservationService.get(createdReservationId.current);
 
       try {
         return await reservationService.confirm(createdReservationId.current);
@@ -163,7 +177,7 @@ export function ReservationForm({
   });
   async function nextStep() {
     const valid = await trigger(stepFields[step], { shouldFocus: true });
-    if (valid) setStep((current) => Math.min(current + 1, 3));
+    if (valid) setStep((current) => Math.min(current + 1, 2));
   }
   function submit(formValues: ReservationFormValues) {
     mutation.mutate(formValues);
@@ -177,7 +191,7 @@ export function ReservationForm({
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="text-xs font-medium text-primary">
-                  Step {step + 1} of 4
+                  Step {step + 1} of 3
                 </p>
                 <CardTitle className="mt-1 text-lg">
                   {steps[step].title}
@@ -188,7 +202,7 @@ export function ReservationForm({
               </span>
             </div>
             <ol
-              className="mt-5 grid grid-cols-4 gap-2"
+              className="mt-5 grid grid-cols-3 gap-2"
               aria-label="Reservation progress"
             >
               {steps.map((item, index) => {
@@ -231,22 +245,19 @@ export function ReservationForm({
                 aria-live="polite"
                 className="flex min-h-80 flex-col items-center justify-center px-4 py-10 text-center"
               >
-                <span className="flex size-24 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 ring-8 ring-emerald-50">
-                  <CheckCircle2
-                    className="size-14"
-                    strokeWidth={2.5}
-                    aria-hidden="true"
-                  />
+                <span className="flex size-14 items-center justify-center rounded-full bg-status-available/10 text-status-available">
+                  <CheckCircle2 className="size-7" aria-hidden="true" />
                 </span>
-                <h3 className="mt-7 text-2xl font-semibold tracking-tight text-emerald-800">
-                  Reservation confirmed
+                <h3 className="mt-5 text-2xl font-semibold tracking-tight">
+                  {canConfirm ? "Reservation confirmed" : "Reservation created"}
                 </h3>
                 <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground">
-                  The booking is confirmed and the room is reserved for{" "}
-                  {values.guestName}.
+                  {canConfirm
+                    ? `The booking is confirmed and the room is reserved for ${values.guestName}.`
+                    : `The booking for ${values.guestName} is pending confirmation by an authorized user.`}
                 </p>
                 {mutation.data?.bookingNumber ? (
-                  <p className="mt-5 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 font-mono text-sm font-semibold text-emerald-800">
+                  <p className="mt-5 rounded-lg border border-status-available/25 bg-status-available/8 px-4 py-2 font-mono text-sm font-semibold text-status-available">
                     Booking {mutation.data.bookingNumber}
                   </p>
                 ) : null}
@@ -372,6 +383,17 @@ export function ReservationForm({
             ) : null}
             {!validated && step === 1 ? (
               <div className="grid gap-5 sm:grid-cols-2">
+                {existingGuest ? (
+                  <Alert className="border-primary/20 bg-primary/5 sm:col-span-2">
+                    <UserRound className="text-primary" />
+                    <AlertTitle>Existing guest selected</AlertTitle>
+                    <AlertDescription>
+                      This reservation will be linked to {existingGuest.name}
+                      &apos;s guest account. No duplicate profile will be
+                      created.
+                    </AlertDescription>
+                  </Alert>
+                ) : null}
                 <Field
                   label="Full name"
                   id="guest-name"
@@ -424,61 +446,6 @@ export function ReservationForm({
             ) : null}
             {!validated && step === 2 ? (
               <div className="space-y-5">
-                <Alert>
-                  <CreditCard />
-                  <AlertTitle>Payment plan</AlertTitle>
-                  <AlertDescription>
-                    Choose how the guest expects to pay. Record the completed
-                    payment from the Payments page after confirming the
-                    reservation.
-                  </AlertDescription>
-                </Alert>
-                <div className="grid gap-5 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="payment-method">Expected method</Label>
-                    <Controller
-                      name="paymentMethod"
-                      control={control}
-                      render={({ field }) => (
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                        >
-                          <SelectTrigger id="payment-method" className="w-full">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="cash">Cash</SelectItem>
-                            <SelectItem value="card">Card</SelectItem>
-                            <SelectItem value="bank_transfer">
-                              Bank transfer
-                            </SelectItem>
-                            <SelectItem value="mobile_money">
-                              Mobile money
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                  </div>
-                  <Field
-                    label="Planned deposit (USD)"
-                    id="deposit"
-                    error={errors.deposit?.message}
-                  >
-                    <Input
-                      id="deposit"
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      {...register("deposit")}
-                    />
-                  </Field>
-                </div>
-              </div>
-            ) : null}
-            {!validated && step === 3 ? (
-              <div className="space-y-5">
                 <div className="rounded-lg border p-4">
                   <h3 className="font-medium">Review reservation</h3>
                   <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
@@ -502,17 +469,18 @@ export function ReservationForm({
                       label="Guests"
                       value={`${values.adults} adult(s), ${values.children ?? 0} child(ren)`}
                     />
-                    <Summary
-                      label="Payment intent"
-                      value={`${pretty(values.paymentMethod ?? "cash")} · $${values.deposit || 0}`}
-                    />
+                    <Summary label="Currency" value={currency} />
                   </dl>
                 </div>
                 <Alert>
-                  <AlertTitle>Review before confirmation</AlertTitle>
+                  <AlertTitle>
+                    {canConfirm
+                      ? "Review before confirmation"
+                      : "Review before creation"}
+                  </AlertTitle>
                   <AlertDescription>
-                    Guest identity, dates, and room availability are checked
-                    again when the reservation is confirmed.
+                    Guest identity, dates, capacity, and room availability are
+                    checked by the hotel server when this reservation is saved.
                   </AlertDescription>
                 </Alert>
               </div>
@@ -525,9 +493,19 @@ export function ReservationForm({
             )}
           >
             {validated ? (
-              <Button asChild>
-                <Link href="/reservations">View reservations</Link>
-              </Button>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button asChild variant="outline">
+                  <Link href="/reservations">View reservations</Link>
+                </Button>
+                {walkIn && canConfirm && canCheckIn && mutation.data?.id ? (
+                  <Button asChild>
+                    <Link href={`/front-desk/check-in/${mutation.data.id}`}>
+                      Continue to check-in
+                      <ArrowRight />
+                    </Link>
+                  </Button>
+                ) : null}
+              </div>
             ) : (
               <>
                 <Button
@@ -539,7 +517,7 @@ export function ReservationForm({
                   <ArrowLeft />
                   Back
                 </Button>
-                {step < 3 ? (
+                {step < 2 ? (
                   <Button type="button" onClick={nextStep}>
                     Continue
                     <ArrowRight />
@@ -549,12 +527,14 @@ export function ReservationForm({
                     {mutation.isPending ? (
                       <>
                         <LoaderCircle className="animate-spin" />
-                        Confirming...
+                        {canConfirm ? "Confirming..." : "Creating..."}
                       </>
                     ) : (
                       <>
                         <CheckCircle2 />
-                        Confirm reservation
+                        {canConfirm
+                          ? "Confirm reservation"
+                          : "Create reservation"}
                       </>
                     )}
                   </Button>

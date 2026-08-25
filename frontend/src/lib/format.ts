@@ -11,3 +11,14 @@ export function formatShortDate(value: string) {
 export function titleCase(value: string) {
   return value.split("_").map((word) => word[0].toUpperCase() + word.slice(1)).join(" ");
 }
+
+export function currentDateInTimeZone(timeZone: string, now = new Date()) {
+  const parts = new Intl.DateTimeFormat("en", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+  const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${value.year}-${value.month}-${value.day}`;
+}

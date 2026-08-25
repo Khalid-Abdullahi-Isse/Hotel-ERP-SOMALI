@@ -3,6 +3,7 @@ import type { Prisma } from '../generated/prisma/client.js';
 import { ReservationStatus, RoomStatus } from '../generated/prisma/enums.js';
 import { AuditLogsService } from '../audit-logs/audit-logs.service.js';
 import type { RequestUser } from '../auth/auth.types.js';
+import { paginatedResponse, paginationOffset } from '../common/pagination/pagination.util.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type { CreateRoomDto } from './dto/create-room.dto.js';
 import type { ListRoomsQueryDto } from './dto/list-rooms-query.dto.js';
@@ -69,20 +70,12 @@ export class RoomsService {
         where,
         include: ROOM_INCLUDE,
         orderBy: [{ roomNumber: 'asc' }, { id: 'asc' }],
-        skip: (query.page - 1) * query.pageSize,
-        take: query.pageSize,
+        skip: paginationOffset(query.page, query.limit),
+        take: query.limit,
       }),
       this.prisma.room.count({ where }),
     ]);
-    return {
-      data: rooms.map((room) => this.view(room)),
-      pagination: {
-        page: query.page,
-        pageSize: query.pageSize,
-        total,
-        pageCount: Math.ceil(total / query.pageSize),
-      },
-    };
+    return paginatedResponse(rooms.map((room) => this.view(room)), query.page, query.limit, total);
   }
 
   async findOne(id: string, actor: RequestUser) {

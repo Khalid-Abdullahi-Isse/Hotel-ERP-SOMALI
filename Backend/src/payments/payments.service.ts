@@ -8,10 +8,13 @@ import {
 } from '../generated/prisma/enums.js';
 import { AuditLogsService } from '../audit-logs/audit-logs.service.js';
 import type { RequestUser } from '../auth/auth.types.js';
+import { paginatedResponse, paginationOffset } from '../common/pagination/pagination.util.js';
+import type { PaginationQueryDto } from '../common/pagination/pagination-query.dto.js';
 import { ChargesService } from '../charges/charges.service.js';
 import { runSerializable } from '../common/database/serializable-transaction.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type { CreatePaymentDto } from './dto/create-payment.dto.js';
+import type { ListPaymentsQueryDto } from './dto/list-payments-query.dto.js';
 import type { RefundPaymentDto } from './dto/refund-payment.dto.js';
 
 const PAYMENT_INCLUDE = {
@@ -114,13 +117,35 @@ export class PaymentsService {
       };
     });
   }
-  async list(actor: RequestUser) {
-    const values = await this.prisma.payment.findMany({
-      where: { hotelId: actor.hotelId },
-      include: PAYMENT_INCLUDE,
-      orderBy: [{ paidAt: 'desc' }, { createdAt: 'desc' }],
-    });
-    return values.map((value) => this.view(value));
+  async list(query: ListPaymentsQueryDto, actor: RequestUser) {
+    const search = query.search?.trim();
+    const where: Prisma.PaymentWhereInput = {
+      hotelId: actor.hotelId,
+      ...(query.kind ? { kind: query.kind } : {}),
+      ...(query.status ? { status: query.status } : {}),
+      ...(query.paymentMethodId ? { paymentMethodId: query.paymentMethodId } : {}),
+      ...(search
+        ? {
+            OR: [
+              { reference: { contains: search, mode: 'insensitive' } },
+              { guest: { fullName: { contains: search, mode: 'insensitive' } } },
+              { reservation: { bookingNumber: { contains: search, mode: 'insensitive' } } },
+              { paymentMethod: { name: { contains: search, mode: 'insensitive' } } },
+            ],
+          }
+        : {}),
+    };
+    const [values, total] = await this.prisma.$transaction([
+      this.prisma.payment.findMany({
+        where,
+        include: PAYMENT_INCLUDE,
+        orderBy: [{ paidAt: 'desc' }, { id: 'desc' }],
+        skip: paginationOffset(query.page, query.limit),
+        take: query.limit,
+      }),
+      this.prisma.payment.count({ where }),
+    ]);
+    return paginatedResponse(values.map((value) => this.view(value)), query.page, query.limit, total);
   }
   refund(id: string, dto: RefundPaymentDto, actor: RequestUser) {
     return runSerializable(this.prisma, async (tx) => {
@@ -209,7 +234,7 @@ export class PaymentsService {
     if (!value) this.notFound();
     return this.view(value);
   }
-  async forReservation(id: string, actor: RequestUser) {
+  async forReservation(id: string, query: PaginationQueryDto, actor: RequestUser) {
     const reservation = await this.prisma.reservation.findFirst({
       where: { id, hotelId: actor.hotelId },
       select: { id: true },
@@ -219,12 +244,18 @@ export class PaymentsService {
         code: 'RESERVATION_NOT_FOUND',
         message: 'Reservation was not found.',
       });
-    const data = await this.prisma.payment.findMany({
-      where: { reservationId: id },
-      include: PAYMENT_INCLUDE,
-      orderBy: { paidAt: 'asc' },
-    });
-    return { data: data.map((v) => this.view(v)), summary: await this.summary(id, this.prisma) };
+    const [data, total, summary] = await Promise.all([
+      this.prisma.payment.findMany({
+        where: { reservationId: id },
+        include: PAYMENT_INCLUDE,
+        orderBy: [{ paidAt: 'asc' }, { id: 'asc' }],
+        skip: paginationOffset(query.page, query.limit),
+        take: query.limit,
+      }),
+      this.prisma.payment.count({ where: { reservationId: id } }),
+      this.summary(id, this.prisma),
+    ]);
+    return { ...paginatedResponse(data.map((v) => this.view(v)), query.page, query.limit, total), summary };
   }
   async summary(
     reservationId: string,

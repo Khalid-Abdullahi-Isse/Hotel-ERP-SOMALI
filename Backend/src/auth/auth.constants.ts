@@ -54,6 +54,14 @@ export const PERMISSIONS = {
   DASHBOARD_VIEW: 'dashboard.view',
   REPORT_VIEW: 'report.view',
   AUDIT_VIEW: 'audit.view',
+  ACCOUNTING_VIEW: 'accounting.view',
+  ACCOUNTING_MANAGE: 'accounting.manage',
+  CHART_OF_ACCOUNTS_VIEW: 'chart_of_accounts.view',
+  CHART_OF_ACCOUNTS_MANAGE: 'chart_of_accounts.manage',
+  JOURNAL_VIEW: 'journal.view',
+  JOURNAL_POST: 'journal.post',
+  JOURNAL_REVERSE: 'journal.reverse',
+  FINANCIAL_REPORTS_VIEW: 'financial_reports.view',
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -64,7 +72,14 @@ export const ROLE_PERMISSION_MATRIX: Record<SystemRole, readonly PermissionKey[]
   ADMIN: ALL_PERMISSIONS,
   MANAGER: ALL_PERMISSIONS.filter(
     (permission) =>
-      permission !== PERMISSIONS.USER_MANAGE && permission !== PERMISSIONS.ROLE_MANAGE,
+      ![
+        PERMISSIONS.USER_MANAGE,
+        PERMISSIONS.ROLE_MANAGE,
+        PERMISSIONS.ACCOUNTING_MANAGE,
+        PERMISSIONS.CHART_OF_ACCOUNTS_MANAGE,
+        PERMISSIONS.JOURNAL_POST,
+        PERMISSIONS.JOURNAL_REVERSE,
+      ].includes(permission as never),
   ),
   STAFF: [
     PERMISSIONS.ROOM_VIEW,

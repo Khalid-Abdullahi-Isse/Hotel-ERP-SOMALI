@@ -1,10 +1,11 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { PERMISSIONS } from '../auth/auth.constants.js';
 import type { RequestUser } from '../auth/auth.types.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import { RequirePermissions } from '../common/decorators/permissions.decorator.js';
 import { HousekeepingUpdateDto } from './dto/housekeeping.dto.js';
+import { ListHousekeepingQueryDto } from './dto/list-housekeeping-query.dto.js';
 import { HousekeepingService } from './housekeeping.service.js';
 @ApiTags('housekeeping')
 @ApiBearerAuth()
@@ -12,9 +13,10 @@ import { HousekeepingService } from './housekeeping.service.js';
 export class HousekeepingController {
   constructor(private readonly service: HousekeepingService) {}
   @Get() @RequirePermissions(PERMISSIONS.HOUSEKEEPING_VIEW) list(
+    @Query() query: ListHousekeepingQueryDto,
     @CurrentUser() actor: RequestUser,
   ) {
-    return this.service.list(actor);
+    return this.service.list(query, actor);
   }
   @Get(':id') @RequirePermissions(PERMISSIONS.HOUSEKEEPING_VIEW) find(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,

@@ -20,6 +20,12 @@ export class HotelsController {
     return this.hotels.current(actor);
   }
 
+  @Get('context')
+  @ApiOperation({ summary: 'Get safe property context for authenticated hotel workflows' })
+  context(@CurrentUser() actor: RequestUser) {
+    return this.hotels.context(actor);
+  }
+
   @Patch('current')
   @RequirePermissions(PERMISSIONS.HOTEL_UPDATE)
   @ApiOperation({ summary: 'Update the authenticated user’s hotel' })

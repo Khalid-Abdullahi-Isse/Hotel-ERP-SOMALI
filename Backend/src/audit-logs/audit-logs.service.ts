@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '../generated/prisma/client.js';
 import type { RequestUser } from '../auth/auth.types.js';
+import { paginatedResponse, paginationOffset } from '../common/pagination/pagination.util.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type { ListAuditQueryDto } from './dto/list-audit-query.dto.js';
 
@@ -48,21 +49,13 @@ export class AuditLogsService {
       this.prisma.auditLog.findMany({
         where,
         include: { user: { select: { id: true, fullName: true } } },
-        orderBy: { createdAt: 'desc' },
-        skip: (query.page - 1) * query.limit,
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        skip: paginationOffset(query.page, query.limit),
         take: query.limit,
       }),
       this.prisma.auditLog.count({ where }),
     ]);
-    return {
-      data,
-      pagination: {
-        page: query.page,
-        limit: query.limit,
-        total,
-        pages: Math.ceil(total / query.limit),
-      },
-    };
+    return paginatedResponse(data, query.page, query.limit, total);
   }
 
   async find(id: string, actor: RequestUser) {

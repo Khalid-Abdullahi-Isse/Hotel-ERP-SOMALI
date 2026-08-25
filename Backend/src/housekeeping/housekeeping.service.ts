@@ -3,8 +3,10 @@ import { HousekeepingStatus, MaintenanceStatus, RoomStatus } from '../generated/
 import { AuditLogsService } from '../audit-logs/audit-logs.service.js';
 import type { RequestUser } from '../auth/auth.types.js';
 import { runSerializable } from '../common/database/serializable-transaction.js';
+import { paginatedResponse, paginationOffset } from '../common/pagination/pagination.util.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type { HousekeepingUpdateDto } from './dto/housekeeping.dto.js';
+import type { ListHousekeepingQueryDto } from './dto/list-housekeeping-query.dto.js';
 const INCLUDE = {
   room: {
     select: {
@@ -23,12 +25,30 @@ export class HousekeepingService {
     private readonly prisma: PrismaService,
     private readonly audits: AuditLogsService,
   ) {}
-  async list(actor: RequestUser) {
-    return this.prisma.housekeepingTask.findMany({
-      where: { hotelId: actor.hotelId },
-      include: INCLUDE,
-      orderBy: [{ status: 'asc' }, { createdAt: 'asc' }],
-    });
+  async list(query: ListHousekeepingQueryDto, actor: RequestUser) {
+    const search = query.search?.trim();
+    const where = {
+      hotelId: actor.hotelId,
+      ...(query.status ? { status: query.status } : {}),
+      ...(query.roomId ? { roomId: query.roomId } : {}),
+      ...(query.assignedToId ? { assignedToId: query.assignedToId } : {}),
+      ...(search ? { OR: [
+        { notes: { contains: search, mode: 'insensitive' as const } },
+        { room: { roomNumber: { contains: search, mode: 'insensitive' as const } } },
+        { assignedTo: { fullName: { contains: search, mode: 'insensitive' as const } } },
+      ] } : {}),
+    };
+    const [values, total] = await this.prisma.$transaction([
+      this.prisma.housekeepingTask.findMany({
+        where,
+        include: INCLUDE,
+        orderBy: [{ status: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
+        skip: paginationOffset(query.page, query.limit),
+        take: query.limit,
+      }),
+      this.prisma.housekeepingTask.count({ where }),
+    ]);
+    return paginatedResponse(values, query.page, query.limit, total);
   }
   async find(id: string, actor: RequestUser) {
     const value = await this.prisma.housekeepingTask.findFirst({

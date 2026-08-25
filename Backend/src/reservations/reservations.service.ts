@@ -11,13 +11,17 @@ import { AuditLogsService } from '../audit-logs/audit-logs.service.js';
 import { AvailabilityService } from '../availability/availability.service.js';
 import type { RequestUser } from '../auth/auth.types.js';
 import { parseStayDates } from '../common/dates/stay-dates.js';
+import { paginatedResponse, paginationOffset } from '../common/pagination/pagination.util.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { GuestsService } from '../guests/guests.service.js';
 import type { ApplyDiscountDto } from './dto/apply-discount.dto.js';
 import type { CreateReservationDto } from './dto/create-reservation.dto.js';
+import type { CreateReservationWithGuestDto } from './dto/create-reservation-with-guest.dto.js';
 import type { ListReservationsQueryDto } from './dto/list-reservations-query.dto.js';
 import type { ReplaceReservationRoomsDto } from './dto/replace-reservation-rooms.dto.js';
 import type { ReservationActionDto } from './dto/reservation-action.dto.js';
 import type { UpdateReservationDto } from './dto/update-reservation.dto.js';
+import type { ReservationTimelineQueryDto } from './dto/reservation-timeline-query.dto.js';
 
 const RESERVATION_INCLUDE = {
   guest: {
@@ -28,7 +32,7 @@ const RESERVATION_INCLUDE = {
       room: {
         include: {
           floor: { select: { id: true, number: true, name: true } },
-          roomType: { select: { id: true, code: true, name: true } },
+          roomType: { select: { id: true, code: true, name: true, isActive: true } },
         },
       },
     },
@@ -55,6 +59,7 @@ export class ReservationsService {
     private readonly prisma: PrismaService,
     private readonly availability: AvailabilityService,
     private readonly auditLogs: AuditLogsService,
+    private readonly guests: GuestsService,
   ) {}
 
   async create(dto: CreateReservationDto, actor: RequestUser) {
@@ -64,59 +69,39 @@ export class ReservationsService {
       try {
         return await this.serializable(async (transaction) => {
           await this.assertGuest(transaction, dto.guestId, actor.hotelId);
-          const rooms = await this.availability.lockAndValidateRooms(
-            transaction,
-            actor.hotelId,
-            dto.roomIds,
-            dates.checkIn,
-            dates.checkOut,
-          );
-          this.assertCapacity(rooms, dto.adults, dto.children);
-          const reservation = await transaction.reservation.create({
-            data: {
-              hotelId: actor.hotelId,
-              guestId: dto.guestId,
-              bookingNumber,
-              checkInDate: dates.checkIn,
-              checkOutDate: dates.checkOut,
-              adults: dto.adults,
-              children: dto.children,
-              notes: dto.notes,
-            },
-          });
-          await transaction.reservationRoom.createMany({
-            data: rooms.map((room) => ({
-              reservationId: reservation.id,
-              roomId: room.id,
-              checkInDate: dates.checkIn,
-              checkOutDate: dates.checkOut,
-              nightlyRate: room.roomType.basePrice,
-            })),
-          });
-          await transaction.reservationHistory.create({
-            data: {
-              reservationId: reservation.id,
-              toStatus: ReservationStatus.PENDING,
-              note: 'Reservation created',
-              changedById: actor.id,
-            },
-          });
-          const completed = await transaction.reservation.findUniqueOrThrow({
-            where: { id: reservation.id },
-            include: RESERVATION_INCLUDE,
-          });
-          await this.auditLogs.record(
-            {
-              hotelId: actor.hotelId,
-              userId: actor.id,
-              action: 'reservation.create',
-              entityType: 'Reservation',
-              entityId: reservation.id,
-              newValue: this.auditView(completed),
-            },
+          return this.createInTransaction(transaction, dto, dto.guestId, actor, bookingNumber, dates);
+        });
+      } catch (error) {
+        if (this.isOverlapError(error)) this.availability.alreadyBooked();
+        if (this.isUniqueError(error) && bookingAttempt < 2) continue;
+        throw error;
+      }
+    }
+    throw new ConflictException({
+      code: 'BOOKING_NUMBER_CONFLICT',
+      message: 'Could not generate a unique booking number. Please retry.',
+    });
+  }
+
+  async createWithGuest(dto: CreateReservationWithGuestDto, actor: RequestUser) {
+    const dates = parseStayDates(dto.checkInDate, dto.checkOutDate);
+    for (let bookingAttempt = 0; bookingAttempt < 3; bookingAttempt += 1) {
+      const bookingNumber = this.generateBookingNumber();
+      try {
+        return await this.serializable(async (transaction) => {
+          const guest = await this.guests.createInTransaction(
+            { ...dto.guest, allowPossibleDuplicate: false },
+            actor,
             transaction,
           );
-          return this.view(completed);
+          return this.createInTransaction(
+            transaction,
+            dto,
+            guest.id,
+            actor,
+            bookingNumber,
+            dates,
+          );
         });
       } catch (error) {
         if (this.isOverlapError(error)) this.availability.alreadyBooked();
@@ -135,6 +120,7 @@ export class ReservationsService {
       hotelId: actor.hotelId,
       ...(query.guestId ? { guestId: query.guestId } : {}),
       ...(query.roomId ? { rooms: { some: { roomId: query.roomId } } } : {}),
+      ...(query.roomIds?.length ? { rooms: { some: { roomId: { in: query.roomIds } } } } : {}),
       ...(query.status ? { status: query.status } : {}),
       ...(query.search
         ? {
@@ -165,44 +151,48 @@ export class ReservationsService {
         where,
         include: RESERVATION_INCLUDE,
         orderBy: [{ checkInDate: 'asc' }, { bookingNumber: 'asc' }],
-        skip: (query.page - 1) * query.pageSize,
-        take: query.pageSize,
+        skip: paginationOffset(query.page, query.limit),
+        take: query.limit,
       }),
       this.prisma.reservation.count({ where }),
     ]);
-    return {
-      data: reservations.map((reservation) => this.view(reservation)),
-      pagination: {
-        page: query.page,
-        pageSize: query.pageSize,
-        total,
-        pageCount: Math.ceil(total / query.pageSize),
-      },
-    };
+    return paginatedResponse(
+      reservations.map((reservation) => this.view(reservation)),
+      query.page,
+      query.limit,
+      total,
+    );
   }
 
   async findOne(id: string, actor: RequestUser) {
     return this.view(await this.findHotelReservation(id, actor.hotelId));
   }
 
-  async timeline(startDate: string, actor: RequestUser) {
-    const start = parseStayDates(startDate, this.nextDate(startDate)).checkIn;
+  async timeline(query: ReservationTimelineQueryDto, actor: RequestUser) {
+    const start = parseStayDates(query.startDate, this.nextDate(query.startDate)).checkIn;
     const end = new Date(start);
     end.setUTCDate(end.getUTCDate() + 7);
-    const [rooms, reservations] = await this.prisma.$transaction([
+    const [rooms, total] = await this.prisma.$transaction([
       this.prisma.room.findMany({
         where: { hotelId: actor.hotelId, isActive: true },
         include: {
           floor: { select: { id: true, number: true, name: true } },
           roomType: { select: { id: true, code: true, name: true } },
         },
-        orderBy: { roomNumber: 'asc' },
+        orderBy: [{ roomNumber: 'asc' }, { id: 'asc' }],
+        skip: paginationOffset(query.page, query.limit),
+        take: query.limit,
       }),
-      this.prisma.reservation.findMany({
+      this.prisma.room.count({ where: { hotelId: actor.hotelId, isActive: true } }),
+    ]);
+    const roomIds = rooms.map((room) => room.id);
+    const reservations = roomIds.length
+      ? await this.prisma.reservation.findMany({
         where: {
           hotelId: actor.hotelId,
           checkInDate: { lt: end },
           checkOutDate: { gt: start },
+          rooms: { some: { roomId: { in: roomIds } } },
         },
         select: {
           id: true,
@@ -214,12 +204,13 @@ export class ReservationsService {
           rooms: { select: { roomId: true } },
         },
         orderBy: [{ checkInDate: 'asc' }, { bookingNumber: 'asc' }],
-      }),
-    ]);
+      })
+      : [];
 
     return {
-      startDate,
+      startDate: query.startDate,
       endDate: end.toISOString().slice(0, 10),
+      pagination: paginatedResponse([], query.page, query.limit, total).pagination,
       rooms: rooms.map((room) => ({
         id: room.id,
         roomNumber: room.roomNumber,
@@ -548,6 +539,72 @@ export class ReservationsService {
         message: `Reservation cannot transition from ${from} to ${target}.`,
       });
     }
+  }
+
+  private async createInTransaction(
+    transaction: Prisma.TransactionClient,
+    dto: Pick<
+      CreateReservationDto,
+      'roomIds' | 'adults' | 'children' | 'notes' | 'checkInDate' | 'checkOutDate'
+    >,
+    guestId: string,
+    actor: RequestUser,
+    bookingNumber: string,
+    dates: { checkIn: Date; checkOut: Date },
+  ) {
+    const rooms = await this.availability.lockAndValidateRooms(
+      transaction,
+      actor.hotelId,
+      dto.roomIds,
+      dates.checkIn,
+      dates.checkOut,
+    );
+    this.assertCapacity(rooms, dto.adults, dto.children);
+    const reservation = await transaction.reservation.create({
+      data: {
+        hotelId: actor.hotelId,
+        guestId,
+        bookingNumber,
+        checkInDate: dates.checkIn,
+        checkOutDate: dates.checkOut,
+        adults: dto.adults,
+        children: dto.children,
+        notes: dto.notes,
+      },
+    });
+    await transaction.reservationRoom.createMany({
+      data: rooms.map((room) => ({
+        reservationId: reservation.id,
+        roomId: room.id,
+        checkInDate: dates.checkIn,
+        checkOutDate: dates.checkOut,
+        nightlyRate: room.roomType.basePrice,
+      })),
+    });
+    await transaction.reservationHistory.create({
+      data: {
+        reservationId: reservation.id,
+        toStatus: ReservationStatus.PENDING,
+        note: 'Reservation created',
+        changedById: actor.id,
+      },
+    });
+    const completed = await transaction.reservation.findUniqueOrThrow({
+      where: { id: reservation.id },
+      include: RESERVATION_INCLUDE,
+    });
+    await this.auditLogs.record(
+      {
+        hotelId: actor.hotelId,
+        userId: actor.id,
+        action: 'reservation.create',
+        entityType: 'Reservation',
+        entityId: reservation.id,
+        newValue: this.auditView(completed),
+      },
+      transaction,
+    );
+    return this.view(completed);
   }
 
   private assertGuest(transaction: Prisma.TransactionClient, guestId: string, hotelId: string) {

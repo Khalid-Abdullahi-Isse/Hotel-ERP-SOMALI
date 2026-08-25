@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PERMISSIONS } from '../auth/auth.constants.js';
 import type { RequestUser } from '../auth/auth.types.js';
@@ -7,6 +7,7 @@ import { RequirePermissions } from '../common/decorators/permissions.decorator.j
 import { ChargesService } from './charges.service.js';
 import { AddServiceChargeDto } from './dto/add-service-charge.dto.js';
 import { VoidChargeDto } from './dto/void-charge.dto.js';
+import { PaginationQueryDto } from '../common/pagination/pagination-query.dto.js';
 
 @ApiTags('stay charges and folio')
 @ApiBearerAuth()
@@ -29,9 +30,10 @@ export class ChargesController {
   @RequirePermissions(PERMISSIONS.CHARGE_VIEW)
   list(
     @Param('id', new ParseUUIDPipe({ version: '4' })) reservationId: string,
+    @Query() query: PaginationQueryDto,
     @CurrentUser() actor: RequestUser,
   ) {
-    return this.charges.list(reservationId, actor);
+    return this.charges.list(reservationId, query, actor);
   }
 
   @Get('reservations/:id/folio')

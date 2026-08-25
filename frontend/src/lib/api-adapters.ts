@@ -22,5 +22,5 @@ export function adaptRoom(room: ApiRoom): Room {
 }
 
 export function adaptPage<TApi, TView>(page: ApiPage<TApi>, adapt: (item: TApi) => TView): PaginatedResponse<TView> {
-  return { data: page.data.map(adapt), meta: { page: page.pagination.page, limit: page.pagination.pageSize, total: page.pagination.total, totalPages: page.pagination.pageCount } };
+  return { data: page.data.map(adapt), pagination: page.pagination };
 }

@@ -156,7 +156,7 @@ describe('Phases 6-8 finance, operations, and management', () => {
     const staff = await token('staff'),
       manager = await token('manager');
     const tasks = await api().get('/api/v1/housekeeping/tasks').auth(staff, { type: 'bearer' });
-    expect(tasks.body).toHaveLength(1);
+    expect(tasks.body.data).toHaveLength(1);
     await api()
       .post(`/api/v1/housekeeping/tasks/${seed.housekeepingId}/start`)
       .auth(staff, { type: 'bearer' })

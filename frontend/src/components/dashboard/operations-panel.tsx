@@ -16,10 +16,10 @@ const filters: Array<{ value: Filter; label: string }> = [
 ];
 
 const kindStyle = {
-  arrival: { icon: ArrowDownToLine, className: "bg-emerald-50 text-emerald-700" },
-  departure: { icon: ArrowUpFromLine, className: "bg-blue-50 text-blue-700" },
-  housekeeping: { icon: CheckCircle2, className: "bg-amber-50 text-amber-700" },
-  maintenance: { icon: Wrench, className: "bg-rose-50 text-rose-700" },
+  arrival: { icon: ArrowDownToLine, className: "bg-status-available/10 text-status-available" },
+  departure: { icon: ArrowUpFromLine, className: "bg-status-occupied/10 text-status-occupied" },
+  housekeeping: { icon: CheckCircle2, className: "bg-status-cleaning/10 text-status-cleaning" },
+  maintenance: { icon: Wrench, className: "bg-status-maintenance/10 text-status-maintenance" },
 } satisfies Record<OperationKind, { icon: typeof ArrowDownToLine; className: string }>;
 
 export function OperationsPanel({ operations }: { operations: OperationEvent[] }) {

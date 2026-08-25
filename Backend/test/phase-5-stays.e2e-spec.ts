@@ -136,6 +136,28 @@ describe('Phase 5 stays, service charges, folios, and checkout', () => {
     expect(voided.status).toBe(201);
     expect(voided.body.voided).toBe(true);
 
+    const unpaidCheckout = await api()
+      .post(`/api/v1/reservations/${seed.reservationId}/check-out`)
+      .auth(staff, { type: 'bearer' });
+    expect(unpaidCheckout.status).toBe(409);
+    expect(unpaidCheckout.body).toMatchObject({ code: 'OUTSTANDING_BALANCE' });
+
+    const paymentMethod = await api()
+      .post('/api/v1/payment-methods')
+      .auth(manager, { type: 'bearer' })
+      .send({ name: 'Cash' });
+    expect(paymentMethod.status).toBe(201);
+    await api()
+      .post('/api/v1/payments')
+      .auth(staff, { type: 'bearer' })
+      .send({
+        reservationId: seed.reservationId,
+        paymentMethodId: paymentMethod.body.id,
+        requestKey: randomUUID(),
+        amount: '250.00',
+      })
+      .expect(201);
+
     const checkedOut = await api()
       .post(`/api/v1/reservations/${seed.reservationId}/check-out`)
       .auth(staff, { type: 'bearer' });

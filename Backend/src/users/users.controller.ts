@@ -7,6 +7,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   Put,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -15,6 +16,7 @@ import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import type { RequestUser } from '../auth/auth.types.js';
 import { AssignRolesDto } from './dto/assign-roles.dto.js';
 import { CreateUserDto } from './dto/create-user.dto.js';
+import { ListUsersQueryDto } from './dto/list-users-query.dto.js';
 import { ResetPasswordDto } from './dto/reset-password.dto.js';
 import { UpdateUserDto } from './dto/update-user.dto.js';
 import { UsersService } from './users.service.js';
@@ -34,8 +36,8 @@ export class UsersController {
 
   @Get()
   @ApiOperation({ summary: 'List hotel users, including deactivated users (ADMIN only)' })
-  list(@CurrentUser() actor: RequestUser) {
-    return this.users.list(actor);
+  list(@Query() query: ListUsersQueryDto, @CurrentUser() actor: RequestUser) {
+    return this.users.list(query, actor);
   }
 
   @Get(':id')

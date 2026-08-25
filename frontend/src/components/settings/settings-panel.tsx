@@ -4,12 +4,18 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import {
   Bell,
+  BedDouble,
   Building2,
+  CalendarClock,
   CreditCard,
   Languages,
   LoaderCircle,
+  Plug,
   Save,
+  ShieldCheck,
+  UsersRound,
 } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -34,10 +40,15 @@ import { hotelService } from "@/services/hotel.service";
 import type { ApiHotel } from "@/types/api-contracts";
 
 const sections = [
-  { id: "property", label: "Property", icon: Building2 },
-  { id: "localization", label: "Localization", icon: Languages },
+  { id: "property", label: "Hotel Details", icon: Building2 },
+  { id: "localization", label: "General", icon: Languages },
+  { id: "users", label: "Users & Permissions", icon: UsersRound },
+  { id: "reservations", label: "Reservation Rules", icon: CalendarClock },
+  { id: "rooms", label: "Room Configuration", icon: BedDouble },
   { id: "payments", label: "Payments", icon: CreditCard },
   { id: "notifications", label: "Notifications", icon: Bell },
+  { id: "security", label: "Security", icon: ShieldCheck },
+  { id: "integrations", label: "Integrations", icon: Plug },
 ] as const;
 
 type Section = (typeof sections)[number]["id"];
@@ -77,11 +88,11 @@ export function SettingsPanel({ hotel }: { hotel: ApiHotel }) {
                 key={item.id}
                 type="button"
                 onClick={() => setSection(item.id)}
-                aria-current={section === item.id ? "page" : undefined}
+                aria-pressed={section === item.id}
                 className={cn(
-                  "flex h-10 shrink-0 items-center gap-3 rounded-lg px-3 text-sm font-medium",
+                  "relative flex h-11 shrink-0 items-center gap-3 rounded-[10px] px-3 text-left text-sm font-medium",
                   section === item.id
-                    ? "bg-primary/10 text-primary"
+                    ? "hudheel-active-rail bg-primary/10 text-primary"
                     : "text-muted-foreground hover:bg-muted",
                 )}
               >
@@ -231,10 +242,14 @@ export function SettingsPanel({ hotel }: { hotel: ApiHotel }) {
 
             {section === "payments" ? (
               <Preview
-                message="Payment methods are now managed from the Payment Methods page in Finance."
+                message="Manage the payment methods available to hotel staff."
                 items={["Cash", "Bank transfer", "Mobile money"]}
+                action={<Button asChild variant="outline"><Link href="/payment-methods">Manage payment methods</Link></Button>}
               />
             ) : null}
+            {section === "users" ? <Preview message="Invite staff and maintain role-based access from Users & Roles." items={["Administrators", "Front Desk", "Housekeeping", "Finance"]} action={<Button asChild variant="outline"><Link href="/users">Manage users and roles</Link></Button>} /> : null}
+            {section === "reservations" ? <Preview message="Reservation rule controls will appear here when supported by the Hotel API." items={["Arrival and departure policy", "Cancellation rules", "Default stay rules"]} /> : null}
+            {section === "rooms" ? <Preview message="Room inventory structure is managed in Property Setup." items={["Floors", "Room types", "Room inventory"]} action={<Button asChild variant="outline"><Link href="/property">Open Property Setup</Link></Button>} /> : null}
             {section === "notifications" ? (
               <Preview
                 message="Notification preferences require the Notifications API."
@@ -246,6 +261,8 @@ export function SettingsPanel({ hotel }: { hotel: ApiHotel }) {
                 ]}
               />
             ) : null}
+            {section === "security" ? <Preview message="Security-sensitive account actions remain controlled by role permissions and authentication policy." items={["Session access", "Role enforcement", "Audit logging"]} /> : null}
+            {section === "integrations" ? <Preview message="No external integrations are configured for this hotel." items={["Channel managers", "Payment providers", "Messaging services"]} /> : null}
 
             {editableSection ? (
               <div className="mt-6 border-t pt-5">
@@ -289,7 +306,7 @@ function InputField({
   );
 }
 
-function Preview({ message, items }: { message: string; items: string[] }) {
+function Preview({ message, items, action }: { message: string; items: string[]; action?: React.ReactNode }) {
   return (
     <div className="max-w-2xl space-y-4">
       <Alert>
@@ -301,6 +318,7 @@ function Preview({ message, items }: { message: string; items: string[] }) {
           {item}
         </div>
       ))}
+      {action}
     </div>
   );
 }

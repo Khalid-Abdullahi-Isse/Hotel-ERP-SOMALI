@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { PAYMENT_METHODS } from "@/types/reservation";
 
 export const reservationSchema = z.object({
   checkIn: z.string().min(1, "Check-in date is required"),
@@ -13,8 +12,6 @@ export const reservationSchema = z.object({
   email: z.union([z.literal(""), z.string().email("Enter a valid email address")]).optional(),
   nationality: z.string().trim().max(80).optional(),
   identification: z.string().trim().max(80).optional(),
-  paymentMethod: z.enum(PAYMENT_METHODS),
-  deposit: z.coerce.number().min(0, "Deposit cannot be negative").max(100000),
   notes: z.string().trim().max(500).optional(),
 }).refine((data) => !data.checkIn || !data.checkOut || data.checkOut > data.checkIn, {
   message: "Check-out must be after check-in",

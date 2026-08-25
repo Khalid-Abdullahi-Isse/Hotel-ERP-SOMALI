@@ -13,14 +13,18 @@ const STATUS_MESSAGES: Record<number, string> = {
 };
 
 export class ApiError extends Error {
-  constructor(message: string, public readonly status?: number) {
+  constructor(
+    message: string,
+    public readonly status?: number,
+    public readonly code?: string,
+    public readonly details?: unknown,
+  ) {
     super(message);
     this.name = "ApiError";
   }
 }
 
 export function getApiError(error: unknown): ApiError {
-  console.error(error);
   if (error instanceof ApiError) return error;
   if (axios.isAxiosError<ApiErrorPayload>(error)) {
     if (!error.response) {
@@ -28,7 +32,7 @@ export function getApiError(error: unknown): ApiError {
     }
     const { status, data } = error.response;
     const backendMessage = Array.isArray(data?.message) ? data.message[0] : data?.message;
-    return new ApiError(backendMessage || STATUS_MESSAGES[status] || "Something went wrong. Please try again.", status);
+    return new ApiError(backendMessage || STATUS_MESSAGES[status] || "Something went wrong. Please try again.", status, data?.code, data?.details);
   }
   if (error instanceof Error) return new ApiError(error.message);
   return new ApiError("Something went wrong. Please try again.");
@@ -41,5 +45,7 @@ export async function toApiError(response: Response): Promise<ApiError> {
   return new ApiError(
     backendMessage || STATUS_MESSAGES[response.status] || "Something went wrong. Please try again.",
     response.status,
+    payload?.code,
+    payload?.details,
   );
 }

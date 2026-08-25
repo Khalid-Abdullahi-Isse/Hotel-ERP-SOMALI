@@ -4,10 +4,17 @@ import { PageHeader } from "@/components/shared/page-header";
 import { UsersTable } from "@/components/settings/users-table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getRoles, getSystemUsers } from "@/services/system.server";
+import { Pagination } from "@/components/shared/pagination";
+import { ListToolbar } from "@/components/shared/list-toolbar";
+import { parsePage } from "@/lib/pagination";
+import { Suspense } from "react";
+import { redirectOutOfRangePage } from "@/lib/pagination.server";
 
 export const metadata: Metadata = { title: "Users & Roles" };
-export default async function UsersPage() {
-  const [users, apiRoles] = await Promise.all([getSystemUsers(), getRoles()]);
+export default async function UsersPage({ searchParams }: { searchParams: Promise<{ page?: string; search?: string; status?: string }> }) {
+  const params = await searchParams;
+  const [users, apiRoles] = await Promise.all([getSystemUsers({ page: parsePage(params.page), search: params.search, status: params.status }), getRoles()]);
+  redirectOutOfRangePage(parsePage(params.page), users.pagination.totalPages, "/users", params);
   const roles = apiRoles.map((role) => ({
     name: role.name,
     detail: `${role.userCount} users · ${role.permissions.length} permissions`,
@@ -16,7 +23,7 @@ export default async function UsersPage() {
     <div className="space-y-6">
       <PageHeader
         title="Users & Roles"
-        description="Manage which hotel features each role can access."
+        description="Review hotel accounts, assigned roles, and permission coverage."
       />
       <div className="grid gap-4 xl:grid-cols-[1.4fr_1fr]">
         <Card className="py-0">
@@ -26,7 +33,9 @@ export default async function UsersPage() {
               Accounts with access to this property
             </p>
           </CardHeader>
-          <UsersTable users={users} />
+          <Suspense fallback={<div className="h-17 border-b" />}><ListToolbar placeholder="Search name, email, username, or role" statuses={[{ value: "active", label: "Active" }, { value: "inactive", label: "Inactive" }, { value: "locked", label: "Locked" }]} /></Suspense>
+          <UsersTable users={users.data} />
+          <Pagination {...users.pagination} itemLabel="users" searchParams={{ search: params.search, status: params.status }} />
         </Card>
         <Card>
           <CardHeader className="border-b">

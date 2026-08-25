@@ -1,34 +1,29 @@
 import "server-only";
 
 import { serverApi } from "@/lib/server-api";
-import type { ApiExpense, ApiPayment } from "@/types/api-contracts";
-import type { CurrencyCode, ExpenseRecord, PaymentMethod, PaymentRecord } from "@/types/finance";
+import type { ApiExpense, ApiPage, ApiPayment } from "@/types/api-contracts";
+import type { PaginatedResponse } from "@/types/api";
+import type { CurrencyCode, ExpenseRecord, PaymentRecord } from "@/types/finance";
+import { listQuery } from "@/lib/pagination";
 
-function paymentMethod(name: string): PaymentMethod {
-  const value = name.toLowerCase();
-  if (value.includes("cash")) return "cash";
-  if (value.includes("mobile") || value.includes("evc") || value.includes("zaad")) return "mobile_money";
-  return "bank";
-}
-
-export async function getPayments(): Promise<PaymentRecord[]> {
-  const values = await serverApi<ApiPayment[]>("/payments");
-  return values.map((payment) => ({
+export async function getPayments(params: { page?: number; search?: string; status?: string } = {}): Promise<PaginatedResponse<PaymentRecord>> {
+  const response = await serverApi<ApiPage<ApiPayment>>(`/payments?${listQuery({ ...params, status: params.status?.toUpperCase() })}`);
+  return { data: response.data.map((payment) => ({
     id: payment.id,
     reference: payment.reference || payment.id.slice(0, 8).toUpperCase(),
     date: payment.paidAt,
     guestName: payment.guest?.fullName ?? "Unassigned guest",
     bookingId: payment.reservation?.bookingNumber ?? "—",
-    method: paymentMethod(payment.paymentMethod.name),
+    method: payment.paymentMethod.name,
     amount: Number(payment.amount),
     currency: payment.hotel.currencyCode,
     status: payment.status === "VOIDED" ? "failed" : payment.kind === "REFUND" ? "refunded" : "completed",
-  }));
+  })), pagination: response.pagination };
 }
 
-export async function getExpenses(): Promise<ExpenseRecord[]> {
-  const values = await serverApi<ApiExpense[]>("/expenses");
-  return values.map((expense) => ({
+export async function getExpenses(params: { page?: number; search?: string; reversed?: "true" | "false" } = {}): Promise<PaginatedResponse<ExpenseRecord>> {
+  const response = await serverApi<ApiPage<ApiExpense>>(`/expenses?${listQuery(params)}`);
+  return { data: response.data.map((expense) => ({
     id: expense.id,
     reference: expense.reference || expense.id.slice(0, 8).toUpperCase(),
     date: expense.expenseDate,
@@ -38,7 +33,7 @@ export async function getExpenses(): Promise<ExpenseRecord[]> {
     amount: Number(expense.amount),
     currency: expense.hotel.currencyCode,
     status: expense.reversed ? "rejected" : "approved",
-  }));
+  })), pagination: response.pagination };
 }
 
 interface ReportEnvelope<T> { currencyCode: CurrencyCode; data: T[] }

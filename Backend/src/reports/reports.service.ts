@@ -71,16 +71,8 @@ export class ReportsService {
   async outstanding(a: RequestUser) {
     const h = await this.hotel(a);
     const data = await this.prisma.$queryRaw<
-      Array<{
-        invoiceId: string;
-        invoiceNumber: string;
-        bookingNumber: string;
-        guestName: string;
-        totalAmount: string;
-        netPaid: string;
-        outstandingAmount: string;
-      }>
-    >`SELECT i.id "invoiceId",i."invoiceNumber",r."bookingNumber",g."fullName" "guestName",i."totalAmount"::text "totalAmount",coalesce(p.net,0)::text "netPaid",greatest(i."totalAmount"-coalesce(p.net,0),0)::text "outstandingAmount" FROM "Invoice" i JOIN "Reservation" r ON r.id=i."reservationId" JOIN "Guest" g ON g.id=r."guestId" LEFT JOIN (SELECT "reservationId",sum(CASE WHEN kind='PAYMENT' THEN amount ELSE -amount END) net FROM "Payment" WHERE status='COMPLETED' GROUP BY "reservationId")p ON p."reservationId"=r.id WHERE i."hotelId"=${a.hotelId}::uuid AND i.status<>'VOIDED' AND i."totalAmount">coalesce(p.net,0) ORDER BY i."issuedAt"`;
+      Array<{ outstandingAmount: string }>
+    >`SELECT coalesce(sum(greatest(i."totalAmount"-coalesce(p.net,0),0)),0)::text "outstandingAmount" FROM "Invoice" i LEFT JOIN (SELECT "reservationId",sum(CASE WHEN kind='PAYMENT' THEN amount ELSE -amount END) net FROM "Payment" WHERE "hotelId"=${a.hotelId}::uuid AND status='COMPLETED' GROUP BY "reservationId")p ON p."reservationId"=i."reservationId" WHERE i."hotelId"=${a.hotelId}::uuid AND i.status<>'VOIDED'`;
     return { generatedAt: new Date().toISOString(), currencyCode: h.currencyCode, data };
   }
   private hotel(a: RequestUser) {

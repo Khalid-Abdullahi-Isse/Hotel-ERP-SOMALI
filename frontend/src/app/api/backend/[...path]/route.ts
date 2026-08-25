@@ -3,8 +3,12 @@ import { NextResponse } from "next/server";
 import { ACCESS_COOKIE, REFRESH_COOKIE } from "@/lib/auth-cookies";
 import { clearAuthCookies, refreshSession, setAuthCookies } from "@/lib/auth-session";
 import { API_URL } from "@/lib/config";
+import { hasTrustedOrigin, untrustedOriginResponse } from "@/lib/request-origin";
 
 async function proxy(request: Request, context: { params: Promise<{ path: string[] }> }) {
+  if (request.method !== "GET" && request.method !== "HEAD" && !hasTrustedOrigin(request)) {
+    return untrustedOriginResponse();
+  }
   const { path } = await context.params;
   const cookieStore = await cookies();
   let access = cookieStore.get(ACCESS_COOKIE)?.value;

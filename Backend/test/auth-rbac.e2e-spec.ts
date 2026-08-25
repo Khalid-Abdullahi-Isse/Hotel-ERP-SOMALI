@@ -176,6 +176,13 @@ describe('Authentication and RBAC', () => {
 
     const newStaff = await login('new.staff', 'New Staff Password 2026!');
     expect(newStaff.status).toBe(201);
+
+    const forbiddenSelfDelete = await api()
+      .delete(`/api/v1/users/${String(created.body.id)}`)
+      .set('Authorization', `Bearer ${String(newStaff.body.accessToken)}`);
+    expect(forbiddenSelfDelete.status).toBe(403);
+    expect(forbiddenSelfDelete.body.code).toBe('ADMIN_REQUIRED');
+
     const deleted = await api()
       .delete(`/api/v1/users/${String(created.body.id)}`)
       .set('Authorization', `Bearer ${adminToken}`);

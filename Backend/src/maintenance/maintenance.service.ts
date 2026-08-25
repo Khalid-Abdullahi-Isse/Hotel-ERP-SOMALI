@@ -4,12 +4,14 @@ import { MaintenanceStatus, ReservationStatus, RoomStatus } from '../generated/p
 import { AuditLogsService } from '../audit-logs/audit-logs.service.js';
 import type { RequestUser } from '../auth/auth.types.js';
 import { runSerializable } from '../common/database/serializable-transaction.js';
+import { paginatedResponse, paginationOffset } from '../common/pagination/pagination.util.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type {
   CompleteMaintenanceDto,
   CreateMaintenanceDto,
   UpdateMaintenanceDto,
 } from './dto/maintenance.dto.js';
+import type { ListMaintenanceQueryDto } from './dto/list-maintenance-query.dto.js';
 const INCLUDE = {
   room: { select: { id: true, roomNumber: true, status: true } },
   assignedTo: { select: { id: true, fullName: true } },
@@ -21,13 +23,35 @@ export class MaintenanceService {
     private readonly prisma: PrismaService,
     private readonly audits: AuditLogsService,
   ) {}
-  async list(actor: RequestUser) {
-    const values = await this.prisma.maintenanceRequest.findMany({
-      where: { hotelId: actor.hotelId },
-      include: INCLUDE,
-      orderBy: [{ status: 'asc' }, { createdAt: 'asc' }],
-    });
-    return values.map((v) => this.view(v));
+  async list(query: ListMaintenanceQueryDto, actor: RequestUser) {
+    const search = query.search?.trim();
+    const where: Prisma.MaintenanceRequestWhereInput = {
+      hotelId: actor.hotelId,
+      ...(query.status ? { status: query.status } : {}),
+      ...(query.roomId ? { roomId: query.roomId } : {}),
+      ...(query.assignedToId ? { assignedToId: query.assignedToId } : {}),
+      ...(search
+        ? {
+            OR: [
+              { problem: { contains: search, mode: 'insensitive' } },
+              { notes: { contains: search, mode: 'insensitive' } },
+              { room: { roomNumber: { contains: search, mode: 'insensitive' } } },
+              { assignedTo: { fullName: { contains: search, mode: 'insensitive' } } },
+            ],
+          }
+        : {}),
+    };
+    const [values, total] = await this.prisma.$transaction([
+      this.prisma.maintenanceRequest.findMany({
+        where,
+        include: INCLUDE,
+        orderBy: [{ status: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
+        skip: paginationOffset(query.page, query.limit),
+        take: query.limit,
+      }),
+      this.prisma.maintenanceRequest.count({ where }),
+    ]);
+    return paginatedResponse(values.map((v) => this.view(v)), query.page, query.limit, total);
   }
   async find(id: string, actor: RequestUser) {
     const v = await this.prisma.maintenanceRequest.findFirst({

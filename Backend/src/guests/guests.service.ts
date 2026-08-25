@@ -2,6 +2,7 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 import type { Prisma } from '../generated/prisma/client.js';
 import { AuditLogsService } from '../audit-logs/audit-logs.service.js';
 import type { RequestUser } from '../auth/auth.types.js';
+import { paginatedResponse, paginationOffset } from '../common/pagination/pagination.util.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type { CreateGuestDto } from './dto/create-guest.dto.js';
 import type { ListGuestsQueryDto } from './dto/list-guests-query.dto.js';
@@ -15,14 +16,31 @@ export class GuestsService {
   ) {}
 
   async create(dto: CreateGuestDto, actor: RequestUser) {
+    return this.prisma.$transaction((transaction) =>
+      this.createInTransaction(dto, actor, transaction),
+    );
+  }
+
+  async createInTransaction(
+    dto: CreateGuestDto,
+    actor: RequestUser,
+    transaction: Prisma.TransactionClient,
+  ) {
     const { allowPossibleDuplicate, ...input } = dto;
     const normalizedPhone = this.normalizePhone(input.phone);
     const normalizedEmail = input.email?.trim().toLowerCase() || null;
-    await this.assertNoStrongDuplicate(actor.hotelId, input.passportNumber, input.nationalId);
+    await this.assertNoStrongDuplicate(
+      actor.hotelId,
+      input.passportNumber,
+      input.nationalId,
+      undefined,
+      transaction,
+    );
     const possibleDuplicates = await this.findPossibleDuplicates(
       actor.hotelId,
       normalizedPhone,
       normalizedEmail,
+      transaction,
     );
     if (possibleDuplicates.length > 0 && !allowPossibleDuplicate) {
       throw new ConflictException({
@@ -32,8 +50,7 @@ export class GuestsService {
       });
     }
 
-    return this.prisma.$transaction(async (transaction) => {
-      const guest = await transaction.guest.create({
+    const guest = await transaction.guest.create({
         data: {
           ...input,
           hotelId: actor.hotelId,
@@ -53,8 +70,7 @@ export class GuestsService {
         },
         transaction,
       );
-      return guest;
-    });
+    return guest;
   }
 
   async list(query: ListGuestsQueryDto, actor: RequestUser) {
@@ -78,20 +94,12 @@ export class GuestsService {
       this.prisma.guest.findMany({
         where,
         orderBy: [{ fullName: 'asc' }, { id: 'asc' }],
-        skip: (query.page - 1) * query.pageSize,
-        take: query.pageSize,
+        skip: paginationOffset(query.page, query.limit),
+        take: query.limit,
       }),
       this.prisma.guest.count({ where }),
     ]);
-    return {
-      data: guests,
-      pagination: {
-        page: query.page,
-        pageSize: query.pageSize,
-        total,
-        pageCount: Math.ceil(total / query.pageSize),
-      },
-    };
+    return paginatedResponse(guests, query.page, query.limit, total);
   }
 
   async findOne(id: string, actor: RequestUser) {
@@ -134,9 +142,10 @@ export class GuestsService {
     passportNumber?: string,
     nationalId?: string,
     excludedId?: string,
+    database: Prisma.TransactionClient | PrismaService = this.prisma,
   ) {
     if (!passportNumber && !nationalId) return;
-    const duplicate = await this.prisma.guest.findFirst({
+    const duplicate = await database.guest.findFirst({
       where: {
         hotelId,
         ...(excludedId ? { id: { not: excludedId } } : {}),
@@ -160,9 +169,14 @@ export class GuestsService {
     }
   }
 
-  private findPossibleDuplicates(hotelId: string, phone: string | null, email: string | null) {
+  private findPossibleDuplicates(
+    hotelId: string,
+    phone: string | null,
+    email: string | null,
+    database: Prisma.TransactionClient | PrismaService = this.prisma,
+  ) {
     if (!phone && !email) return Promise.resolve([]);
-    return this.prisma.guest.findMany({
+    return database.guest.findMany({
       where: {
         hotelId,
         OR: [

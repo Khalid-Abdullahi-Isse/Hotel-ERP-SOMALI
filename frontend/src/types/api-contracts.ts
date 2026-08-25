@@ -1,8 +1,10 @@
 export interface ApiPagination {
   page: number;
-  pageSize: number;
+  limit: number;
   total: number;
-  pageCount: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
 }
 
 export interface ApiPage<T> {
@@ -49,6 +51,17 @@ export interface ApiService {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+}
+export interface ApiCharge {
+  id: string;
+  type: "ROOM" | "SERVICE" | "DISCOUNT" | "OTHER";
+  description: string;
+  quantity: string;
+  unitPrice: string;
+  totalAmount: string;
+  chargeDate: string;
+  voidedAt: string | null;
+  service?: { id: string; name: string } | null;
 }
 export interface ApiPaymentMethod {
   id: string;
@@ -135,12 +148,12 @@ export interface ApiAuditLog {
 }
 export interface ApiAuditPage {
   data: ApiAuditLog[];
-  pagination: { page: number; limit: number; total: number; pages: number };
+  pagination: ApiPagination;
 }
 export interface ApiInvoice {
   id: string;
   invoiceNumber: string;
-  status: "DRAFT" | "ISSUED" | "VOIDED";
+  status: "DRAFT" | "ISSUED" | "PAID" | "PARTIALLY_PAID" | "VOIDED";
   subtotal: string;
   discountAmount: string;
   totalAmount: string;
@@ -148,6 +161,7 @@ export interface ApiInvoice {
   outstandingAmount: string;
   issuedAt: string | null;
   createdAt: string;
+  hotel: { currencyCode: "USD" | "SOS" };
   reservation: {
     id: string;
     bookingNumber: string;
@@ -204,6 +218,16 @@ export interface ApiReservation {
   discountAmount: string;
   subtotal: string;
   estimatedTotal: string;
+  checkedInAt?: string | null;
+  checkedOutAt?: string | null;
+  history?: Array<{
+    id: string;
+    fromStatus: ApiReservationStatus | null;
+    toStatus: ApiReservationStatus;
+    note: string | null;
+    changedById: string | null;
+    createdAt: string;
+  }>;
   createdAt: string;
   updatedAt: string;
 }
@@ -211,11 +235,66 @@ export interface ApiAvailabilityResult {
   checkInDate: string;
   checkOutDate: string;
   nights: number;
+  pagination: ApiPagination;
   data: Array<ApiRoom & { nightlyRate: string; estimatedRoomTotal: string }>;
+}
+
+export interface ApiFolio {
+  reservation: {
+    id: string;
+    bookingNumber: string;
+    status: ApiReservationStatus;
+    guest: { id: string; fullName: string };
+    checkInDate: string;
+    checkOutDate: string;
+    checkedInAt: string | null;
+    checkedOutAt: string | null;
+  };
+  roomLines: Array<{
+    reservationRoomId: string;
+    roomId: string;
+    roomNumber: string;
+    nights: number;
+    nightlyRate: string;
+    amount: string;
+    chargeId: string | null;
+    posted: boolean;
+    voided: boolean;
+  }>;
+  charges: ApiCharge[];
+  subtotal: string;
+  discountAmount: string;
+  total: string;
+  roomChargesPosted: boolean;
+}
+
+export interface ApiPaymentSummary {
+  totalAmount: string;
+  paidAmount: string;
+  refundedAmount: string;
+  netPaidAmount: string;
+  outstandingAmount: string;
+}
+
+export interface ApiReservationPayments {
+  data: ApiPayment[];
+  pagination: ApiPagination;
+  summary: ApiPaymentSummary;
+}
+
+export interface ApiCheckInResult {
+  alreadyCompleted: boolean;
+  reservation: ApiReservation;
+}
+
+export interface ApiCheckOutResult {
+  alreadyCompleted: boolean;
+  folio: ApiFolio;
 }
 export interface ApiReservationTimelineResult {
   startDate: string;
   endDate: string;
+  pagination: ApiPagination;
   rooms: Array<Pick<ApiRoom, "id" | "roomNumber" | "floor" | "roomType">>;
   reservations: Array<
     Pick<
@@ -257,6 +336,12 @@ export interface ApiHotel {
   createdAt: string;
   updatedAt: string;
 }
+export interface ApiHotelContext {
+  id: string;
+  name: string;
+  currencyCode: "USD" | "SOS";
+  timezone: string;
+}
 export interface ApiSystemUser {
   id: string;
   hotelId: string;
@@ -264,8 +349,12 @@ export interface ApiSystemUser {
   username: string;
   fullName: string;
   status: "ACTIVE" | "INACTIVE" | "LOCKED";
+  failedLoginAttempts: number;
+  lockedUntil: string | null;
   lastLoginAt: string | null;
   deletedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
   roles: Array<{
     id: string;
     name: string;
@@ -275,10 +364,14 @@ export interface ApiSystemUser {
 }
 export interface ApiRole {
   id: string;
+  hotelId: string;
   name: string;
   description: string | null;
   isSystem: boolean;
   isActive: boolean;
+  deletedAt: string | null;
   userCount: number;
   permissions: Array<{ key: string; description: string | null }>;
+  createdAt: string;
+  updatedAt: string;
 }
