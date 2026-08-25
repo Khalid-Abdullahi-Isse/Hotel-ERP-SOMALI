@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 4, "column": 0}, "map": {"version":3,"sources":["file:///C:/Users/khali/Documents/ChatGPT/Hotel%20ERP/frontend/src/components/providers/query-provider.tsx"],"sourcesContent":["\"use client\";\n\nimport { QueryClient, QueryClientProvider } from \"@tanstack/react-query\";\nimport { useState } from \"react\";\n\nexport function QueryProvider({ children }: { children: React.ReactNode }) {\n  const [queryClient] = useState(\n    () => new QueryClient({\n      defaultOptions: {\n        queries: { staleTime: 30_000, refetchOnWindowFocus: false, retry: 1 },\n        mutations: { retry: false },\n      },\n    }),\n  );\n  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;\n}\n"],"names":["QueryProvider","children","queryClient","defaultOptions","queries","staleTime","refetchOnWindowFocus","retry","mutations","client"],"mappings":";;;;;AAEA;AAAA;AACA;;;AAHA;;;AAKO,SAASA,cAAc,EAAEC,QAAQ,EAAiC;;IACvE,MAAM,CAACC,YAAY,GAAG,IAAA,yKAAQ;kCAC5B,IAAM,IAAI,+LAAW,CAAC;gBACpBC,gBAAgB;oBACdC,SAAS;wBAAEC,WAAW;wBAAQC,sBAAsB;wBAAOC,OAAO;oBAAE;oBACpEC,WAAW;wBAAED,OAAO;oBAAM;gBAC5B;YACF;;IAEF,qBAAO,6LAAC,gNAAmB;QAACE,QAAQP;kBAAcD;;;;;;AACpD;GAVgBD;KAAAA"}}]
+}
