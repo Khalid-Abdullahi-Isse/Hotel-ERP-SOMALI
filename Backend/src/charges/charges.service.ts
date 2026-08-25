@@ -9,6 +9,7 @@ import type { PaginationQueryDto } from '../common/pagination/pagination-query.d
 import { PrismaService } from '../prisma/prisma.service.js';
 import type { AddServiceChargeDto } from './dto/add-service-charge.dto.js';
 import type { VoidChargeDto } from './dto/void-charge.dto.js';
+import { GuestAccountingService } from '../accounting/guest-accounting.service.js';
 
 const FOLIO_INCLUDE = {
   guest: { select: { id: true, fullName: true } },
@@ -35,6 +36,7 @@ export class ChargesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditLogs: AuditLogsService,
+    private readonly guestAccounting: GuestAccountingService,
   ) {}
 
   addServiceCharge(reservationId: string, dto: AddServiceChargeDto, actor: RequestUser) {
@@ -67,6 +69,19 @@ export class ChargesService {
         },
         include: { service: { select: { id: true, name: true } } },
       });
+      await this.guestAccounting.postCharge(
+        {
+          id: charge.id,
+          reservationId,
+          amount: charge.totalAmount,
+          occurredAt: charge.chargeDate,
+          description: charge.description,
+          type: charge.type,
+          revenueAccountId: service.revenueAccountId,
+        },
+        actor,
+        transaction,
+      );
       await this.auditLogs.record(
         {
           hotelId: actor.hotelId,
@@ -97,7 +112,12 @@ export class ChargesService {
       }),
       this.prisma.charge.count({ where: { reservationId } }),
     ]);
-    return paginatedResponse(charges.map((charge) => this.chargeView(charge)), query.page, query.limit, total);
+    return paginatedResponse(
+      charges.map((charge) => this.chargeView(charge)),
+      query.page,
+      query.limit,
+      total,
+    );
   }
 
   async folio(reservationId: string, actor: RequestUser) {
@@ -147,6 +167,7 @@ export class ChargesService {
           voidedBy: { select: { id: true, fullName: true } },
         },
       });
+      await this.guestAccounting.voidCharge(id, dto.reason, actor, transaction);
       await this.auditLogs.record(
         {
           hotelId: actor.hotelId,
@@ -163,7 +184,11 @@ export class ChargesService {
     });
   }
 
-  async createRoomCharges(transaction: Prisma.TransactionClient, reservationId: string) {
+  async createRoomCharges(
+    transaction: Prisma.TransactionClient,
+    reservationId: string,
+    actor: RequestUser,
+  ) {
     const reservation: FolioRecord = await transaction.reservation.findUniqueOrThrow({
       where: { id: reservationId },
       include: FOLIO_INCLUDE,
@@ -171,7 +196,7 @@ export class ChargesService {
     const nights = this.nights(reservation.checkInDate, reservation.checkOutDate);
     for (const entry of reservation.rooms) {
       if (entry.roomCharge) continue;
-      await transaction.charge.create({
+      const charge = await transaction.charge.create({
         data: {
           reservationId: reservation.id,
           reservationRoomId: entry.id,
@@ -182,6 +207,18 @@ export class ChargesService {
           totalAmount: entry.nightlyRate.mul(nights),
         },
       });
+      await this.guestAccounting.postCharge(
+        {
+          id: charge.id,
+          reservationId,
+          amount: charge.totalAmount,
+          occurredAt: charge.chargeDate,
+          description: charge.description,
+          type: charge.type,
+        },
+        actor,
+        transaction,
+      );
     }
   }
 

@@ -262,6 +262,102 @@ export class AccountingPostingService {
     };
   }
 
+  async reverseEvent(
+    input: {
+      hotelId: string;
+      actorId: string;
+      sourceType: string;
+      sourceId: string;
+      reason: string;
+    },
+    tx: Prisma.TransactionClient,
+  ) {
+    const original = await tx.journalEntry.findUnique({
+      where: {
+        hotelId_sourceType_sourceId: {
+          hotelId: input.hotelId,
+          sourceType: input.sourceType,
+          sourceId: input.sourceId,
+        },
+      },
+      include: { lines: true },
+    });
+    if (!original) return { reversed: false, entry: null };
+    if (original.status === JournalEntryStatus.REVERSED && original.reversalEntryId) {
+      return {
+        reversed: false,
+        entry: await tx.journalEntry.findUniqueOrThrow({
+          where: { id: original.reversalEntryId },
+          include: ENTRY_INCLUDE,
+        }),
+      };
+    }
+    if (original.status !== JournalEntryStatus.POSTED) {
+      throw new ConflictException({
+        code: 'INVALID_EVENT_REVERSAL',
+        message: 'Only a posted accounting event can be reversed.',
+      });
+    }
+
+    const reversal = await this.createDraft(tx, {
+      hotelId: input.hotelId,
+      actorId: input.actorId,
+      journalId: original.journalId,
+      businessDate: original.businessDate.toISOString().slice(0, 10),
+      sourceType: 'REVERSAL',
+      sourceId: original.id,
+      reference: original.entryNumber,
+      description: `Reversal of ${original.entryNumber}: ${input.reason.trim()}`,
+      reversedEntryId: original.id,
+      lines: original.lines.map((line) => ({
+        accountId: line.accountId,
+        description: line.description ?? undefined,
+        debit: line.credit.toString(),
+        credit: line.debit.toString(),
+        sourceType: line.sourceType ?? undefined,
+        sourceId: line.sourceId ?? undefined,
+      })),
+    });
+    const reversedAt = new Date();
+    await tx.journalEntry.update({
+      where: { id: reversal.id },
+      data: { status: JournalEntryStatus.POSTED, postedById: input.actorId, postedAt: reversedAt },
+    });
+    await tx.journalEntry.update({
+      where: { id: original.id },
+      data: {
+        status: JournalEntryStatus.REVERSED,
+        reversalEntryId: reversal.id,
+        reversalReason: input.reason.trim(),
+        reversedById: input.actorId,
+        reversedAt,
+      },
+    });
+    await this.audits.record(
+      {
+        hotelId: input.hotelId,
+        userId: input.actorId,
+        action: 'accounting.event_reversed',
+        entityType: 'JournalEntry',
+        entityId: original.id,
+        oldValue: { status: JournalEntryStatus.POSTED },
+        newValue: {
+          status: JournalEntryStatus.REVERSED,
+          reversalEntryId: reversal.id,
+          reason: input.reason.trim(),
+        },
+      },
+      tx,
+    );
+    return {
+      reversed: true,
+      entry: await tx.journalEntry.findUniqueOrThrow({
+        where: { id: reversal.id },
+        include: ENTRY_INCLUDE,
+      }),
+    };
+  }
+
   private async createDraft(
     tx: Prisma.TransactionClient,
     input: {

@@ -72,7 +72,7 @@ export class CheckOutService {
         this.roomStateConflict();
       }
 
-      await this.charges.createRoomCharges(transaction, id);
+      await this.charges.createRoomCharges(transaction, id, actor);
       const provisionalFolio = await this.charges.buildFolio(id, transaction);
       if (new Prisma.Decimal(provisionalFolio.total).isNegative()) {
         throw new ConflictException({

@@ -16,10 +16,11 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import type { CreatePaymentDto } from './dto/create-payment.dto.js';
 import type { ListPaymentsQueryDto } from './dto/list-payments-query.dto.js';
 import type { RefundPaymentDto } from './dto/refund-payment.dto.js';
+import { GuestAccountingService } from '../accounting/guest-accounting.service.js';
 
 const PAYMENT_INCLUDE = {
   hotel: { select: { currencyCode: true } },
-  paymentMethod: { select: { id: true, name: true } },
+  paymentMethod: { select: { id: true, name: true, ledgerAccountId: true } },
   createdBy: { select: { id: true, fullName: true } },
   guest: { select: { id: true, fullName: true } },
   reservation: { select: { id: true, bookingNumber: true } },
@@ -31,6 +32,7 @@ export class PaymentsService {
     private readonly prisma: PrismaService,
     private readonly charges: ChargesService,
     private readonly audits: AuditLogsService,
+    private readonly guestAccounting: GuestAccountingService,
   ) {}
   create(dto: CreatePaymentDto, actor: RequestUser) {
     return runSerializable(this.prisma, async (tx) => {
@@ -47,6 +49,19 @@ export class PaymentsService {
           !existing.amount.eq(dto.amount)
         )
           this.idempotencyConflict();
+        await this.guestAccounting.postPayment(
+          {
+            id: existing.id,
+            reservationId: dto.reservationId,
+            amount: existing.amount,
+            occurredAt: existing.paidAt,
+            reference: existing.reference,
+            description: `Guest payment for ${existing.reservation?.bookingNumber ?? dto.reservationId}`,
+            paymentAccountId: existing.paymentMethod.ledgerAccountId,
+          },
+          actor,
+          tx,
+        );
         return {
           idempotentReplay: true,
           payment: this.view(existing),
@@ -98,6 +113,19 @@ export class PaymentsService {
         },
         include: PAYMENT_INCLUDE,
       });
+      await this.guestAccounting.postPayment(
+        {
+          id: payment.id,
+          reservationId: dto.reservationId,
+          amount: payment.amount,
+          occurredAt: payment.paidAt,
+          reference: payment.reference,
+          description: `Guest payment for ${payment.reservation?.bookingNumber ?? dto.reservationId}`,
+          paymentAccountId: payment.paymentMethod.ledgerAccountId,
+        },
+        actor,
+        tx,
+      );
       await this.syncInvoice(dto.reservationId, tx);
       await this.audits.record(
         {
@@ -145,7 +173,12 @@ export class PaymentsService {
       }),
       this.prisma.payment.count({ where }),
     ]);
-    return paginatedResponse(values.map((value) => this.view(value)), query.page, query.limit, total);
+    return paginatedResponse(
+      values.map((value) => this.view(value)),
+      query.page,
+      query.limit,
+      total,
+    );
   }
   refund(id: string, dto: RefundPaymentDto, actor: RequestUser) {
     return runSerializable(this.prisma, async (tx) => {
@@ -173,6 +206,19 @@ export class PaymentsService {
           !existing.amount.eq(dto.amount)
         )
           this.idempotencyConflict();
+        await this.guestAccounting.postRefund(
+          {
+            id: existing.id,
+            reservationId: original.reservationId!,
+            amount: existing.amount,
+            occurredAt: existing.paidAt,
+            reference: existing.reference,
+            description: `Guest payment refund for ${original.reservation?.bookingNumber ?? original.id}`,
+            paymentAccountId: existing.paymentMethod.ledgerAccountId,
+          },
+          actor,
+          tx,
+        );
         return {
           idempotentReplay: true,
           refund: this.view(existing),
@@ -206,6 +252,19 @@ export class PaymentsService {
         },
         include: PAYMENT_INCLUDE,
       });
+      await this.guestAccounting.postRefund(
+        {
+          id: refund.id,
+          reservationId: original.reservationId!,
+          amount: refund.amount,
+          occurredAt: refund.paidAt,
+          reference: refund.reference,
+          description: `Guest payment refund for ${original.reservation?.bookingNumber ?? original.id}`,
+          paymentAccountId: refund.paymentMethod.ledgerAccountId,
+        },
+        actor,
+        tx,
+      );
       await this.syncInvoice(original.reservationId!, tx);
       await this.audits.record(
         {
@@ -255,7 +314,15 @@ export class PaymentsService {
       this.prisma.payment.count({ where: { reservationId: id } }),
       this.summary(id, this.prisma),
     ]);
-    return { ...paginatedResponse(data.map((v) => this.view(v)), query.page, query.limit, total), summary };
+    return {
+      ...paginatedResponse(
+        data.map((v) => this.view(v)),
+        query.page,
+        query.limit,
+        total,
+      ),
+      summary,
+    };
   }
   async summary(
     reservationId: string,

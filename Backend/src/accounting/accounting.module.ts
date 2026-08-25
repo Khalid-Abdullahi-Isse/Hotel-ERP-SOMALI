@@ -10,6 +10,7 @@ import { AccountingReportsController } from './reports/accounting-reports.contro
 import { AccountingReportsService } from './reports/accounting-reports.service.js';
 import { AccountingSettingsController } from './settings/accounting-settings.controller.js';
 import { AccountingSettingsService } from './settings/accounting-settings.service.js';
+import { GuestAccountingService } from './guest-accounting.service.js';
 
 @Module({
   controllers: [
@@ -26,7 +27,8 @@ import { AccountingSettingsService } from './settings/accounting-settings.servic
     AccountingPostingService,
     AccountingReportsService,
     AccountingSettingsService,
+    GuestAccountingService,
   ],
-  exports: [AccountingPostingService, AccountingSettingsService],
+  exports: [AccountingPostingService, AccountingSettingsService, GuestAccountingService],
 })
 export class AccountingModule {}
