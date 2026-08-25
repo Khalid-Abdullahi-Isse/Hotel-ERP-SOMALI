@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BedDouble, ExternalLink, Pencil } from "lucide-react";
+import { BedDouble, ExternalLink, MoreVertical, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -8,6 +8,7 @@ import { DeactivateRoomButton } from "@/components/rooms/deactivate-room-button"
 import { RestoreRoomButton } from "@/components/rooms/room-lifecycle-action";
 import { Badge } from "@/components/ui/badge";
 import type { Room } from "@/types/room";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 export function RoomsTable({ rooms, canCreate, canEdit, canManage }: { rooms: Room[]; canCreate: boolean; canEdit: boolean; canManage: boolean }) {
   if (rooms.length === 0) {
@@ -24,7 +25,7 @@ export function RoomsTable({ rooms, canCreate, canEdit, canManage }: { rooms: Ro
               <TableCell className="font-medium">{room.roomType.name}</TableCell>
               <TableCell className="text-muted-foreground">{room.floor || "—"}</TableCell>
               <TableCell><StatusBadge status={room.status} /></TableCell>
-              <TableCell><div className="flex justify-end gap-1"><Button variant="ghost" size="icon-sm" asChild><Link href={`/rooms/${room.id}`} aria-label={`View room ${room.number}`}><ExternalLink /></Link></Button>{canEdit ? <Button variant="ghost" size="icon-sm" asChild><Link href={`/rooms/${room.id}/edit`} aria-label={`Edit room ${room.number}`}><Pencil /></Link></Button> : null}{canManage && room.isActive && room.status !== "reserved" && room.status !== "occupied" ? <DeactivateRoomButton roomId={room.id} roomNumber={room.number} compact /> : null}{canManage && !room.isActive ? <RestoreRoomButton roomId={room.id} roomNumber={room.number} compact /> : null}</div></TableCell>
+              <TableCell><div className="flex justify-end gap-1"><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon-sm" aria-label={`Actions for room ${room.number}`}><MoreVertical /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem asChild><Link href={`/rooms/${room.id}`}><ExternalLink />View details</Link></DropdownMenuItem>{canEdit ? <DropdownMenuItem asChild><Link href={`/rooms/${room.id}/edit`}><Pencil />Edit</Link></DropdownMenuItem> : null}</DropdownMenuContent></DropdownMenu>{canManage && room.isActive && room.status !== "reserved" && room.status !== "occupied" ? <DeactivateRoomButton roomId={room.id} roomNumber={room.number} compact /> : null}{canManage && !room.isActive ? <RestoreRoomButton roomId={room.id} roomNumber={room.number} compact /> : null}</div></TableCell>
             </TableRow>
           ))}
         </TableBody>

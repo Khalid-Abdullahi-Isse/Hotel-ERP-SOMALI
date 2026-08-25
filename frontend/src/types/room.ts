@@ -12,5 +12,5 @@ export interface Room {
 }
 export interface RoomInput { roomNumber: string; floorId?: string | null; roomTypeId: string; notes?: string }
 export interface RoomListParams {
-  page?: number; pageSize?: number; search?: string; status?: RoomStatus; roomTypeId?: string; floorId?: string; isActive?: boolean;
+  page?: number; limit?: number; search?: string; status?: RoomStatus; roomTypeId?: string; floorId?: string; isActive?: boolean;
 }

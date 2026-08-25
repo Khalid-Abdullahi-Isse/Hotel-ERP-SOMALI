@@ -1,4 +1,4 @@
-import type { PaymentStatus, ReservationStatus } from "@/types/reservation";
+import type { ReservationStatus } from "@/types/reservation";
 
 export interface GuestSummary {
   id: string;
@@ -20,7 +20,6 @@ export interface GuestStay {
   checkIn: string;
   checkOut: string;
   status: ReservationStatus;
-  paymentStatus: PaymentStatus;
   total: number;
   currency: "USD" | "SOS";
 }

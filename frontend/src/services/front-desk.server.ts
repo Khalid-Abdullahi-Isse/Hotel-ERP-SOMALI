@@ -8,30 +8,15 @@ import type {
   ApiRoom,
 } from "@/types/api-contracts";
 import type { FrontDeskMetric, FrontDeskRoom } from "@/types/front-desk";
+import type { ApiPagination } from "@/types/api-contracts";
+import { getDashboardSummary } from "@/services/dashboard.server";
+import { listQuery } from "@/lib/pagination";
 
 const activeReservationStatuses: ApiReservationStatus[] = [
   "CHECKED_IN",
   "CONFIRMED",
   "PENDING",
 ];
-
-async function getAllPages<T>(path: string, params: Record<string, string>) {
-  const firstQuery = new URLSearchParams({ ...params, page: "1", pageSize: "100" });
-  const first = await serverApi<ApiPage<T>>(`${path}?${firstQuery}`);
-  if (first.pagination.pageCount <= 1) return first.data;
-
-  const remaining = await Promise.all(
-    Array.from({ length: first.pagination.pageCount - 1 }, (_, index) => {
-      const query = new URLSearchParams({
-        ...params,
-        page: String(index + 2),
-        pageSize: "100",
-      });
-      return serverApi<ApiPage<T>>(`${path}?${query}`);
-    }),
-  );
-  return first.data.concat(remaining.flatMap((page) => page.data));
-}
 
 function cleaningLabel(status: ApiRoom["status"]): FrontDeskRoom["cleaningLabel"] {
   if (status === "DIRTY") return "Needs cleaning";
@@ -40,17 +25,20 @@ function cleaningLabel(status: ApiRoom["status"]): FrontDeskRoom["cleaningLabel"
   return "Clean";
 }
 
-export async function getFrontDeskData(): Promise<{
+export async function getFrontDeskData(params: { page?: number; search?: string; status?: string } = {}): Promise<{
   rooms: FrontDeskRoom[];
   metrics: FrontDeskMetric[];
+  pagination: ApiPagination;
+  businessDate: string;
 }> {
-  const [rooms, ...reservationGroups] = await Promise.all([
-    getAllPages<ApiRoom>("/rooms", { isActive: "true" }),
-    ...activeReservationStatuses.map((status) =>
-      getAllPages<ApiReservation>("/reservations", { status }),
-    ),
+  const roomPage = await serverApi<ApiPage<ApiRoom>>(`/rooms?${listQuery({ ...params, limit: 30, isActive: true, status: params.status?.toUpperCase() })}`);
+  const roomIds = roomPage.data.map((room) => room.id).join(",");
+  const [summary, ...reservationGroups] = await Promise.all([
+    getDashboardSummary(),
+    ...activeReservationStatuses.map((status) => serverApi<ApiPage<ApiReservation>>(`/reservations?${listQuery({ page: 1, limit: 30, status, roomIds })}`)),
   ]);
-  const reservations = reservationGroups.flat();
+  const rooms = roomPage.data;
+  const reservations = reservationGroups.flatMap((group) => group.data);
   const reservationByRoom = new Map<string, ApiReservation>();
   for (const reservation of reservations) {
     for (const entry of reservation.rooms) {
@@ -73,6 +61,27 @@ export async function getFrontDeskData(): Promise<{
       floor,
       status: room.status.toLowerCase() as FrontDeskRoom["status"],
       guestName: reservation?.guest.fullName,
+      reservationId: reservation?.id,
+      reservationCode: reservation?.bookingNumber,
+      reservationStatus: reservation?.status,
+      arrivalDate: reservation?.checkInDate.slice(0, 10),
+      departureDate: reservation?.checkOutDate.slice(0, 10),
+      nights: reservation?.nights,
+      action: reservation?.status === "CHECKED_IN"
+        ? "view_stay"
+        : room.status === "DIRTY" || room.status === "CLEANING"
+          ? "housekeeping"
+          : room.status === "MAINTENANCE"
+            ? "view_issue"
+            : reservation?.status === "PENDING"
+              ? "review"
+              : reservation?.status === "CONFIRMED"
+                ? reservation.checkInDate.slice(0, 10) === summary.businessDate
+                  ? "check_in"
+                  : "view_reservation"
+                : room.status === "OCCUPIED"
+                  ? "view_stay"
+                  : "assign",
       stayDetail: reservation
         ? `${reservation.bookingNumber} · ${reservation.checkInDate.slice(0, 10)}–${reservation.checkOutDate.slice(0, 10)}`
         : undefined,
@@ -80,15 +89,15 @@ export async function getFrontDeskData(): Promise<{
     };
   });
 
-  const count = (status: FrontDeskRoom["status"]) =>
-    adaptedRooms.filter((room) => room.status === status).length;
   return {
     rooms: adaptedRooms,
+    pagination: roomPage.pagination,
+    businessDate: summary.businessDate,
     metrics: [
-      { label: "Reserved", value: reservations.filter((item) => item.status === "CONFIRMED" || item.status === "PENDING").length, detail: "booked stays" },
-      { label: "In house", value: reservations.filter((item) => item.status === "CHECKED_IN").length, detail: "active stays" },
-      { label: "Available", value: count("available"), detail: "ready rooms" },
-      { label: "Needs attention", value: count("dirty") + count("cleaning") + count("maintenance"), detail: "room tasks" },
+      { label: "Reserved", value: summary.rooms.reserved ?? 0, detail: "booked rooms" },
+      { label: "In house", value: summary.guests.current, detail: "active stays" },
+      { label: "Available", value: summary.rooms.available ?? 0, detail: "operationally ready" },
+      { label: "Needs attention", value: (summary.rooms.dirty ?? 0) + (summary.rooms.cleaning ?? 0) + (summary.rooms.maintenance ?? 0), detail: "room tasks" },
     ],
   };
 }

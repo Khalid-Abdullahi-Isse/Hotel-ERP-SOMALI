@@ -1,16 +1,4 @@
-"use client";
-
-import { useState } from "react";
-import { Search, TicketX } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { TicketX } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -24,12 +12,8 @@ import {
   PaymentStatusText,
   ReservationStatusBadge,
 } from "@/components/shared/reservation-status-badge";
-import type {
-  ReservationStatus,
-  ReservationSummary,
-} from "@/types/reservation";
-
-type StatusFilter = "all" | ReservationStatus;
+import type { ReservationSummary } from "@/types/reservation";
+import { ReservationActions } from "@/components/reservations/reservation-actions";
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("en", {
@@ -58,76 +42,23 @@ function sourceLabel(value?: string) {
 
 export function ReservationsTable({
   reservations,
+  permissions,
+  businessDate,
 }: {
   reservations: ReservationSummary[];
+  permissions: { canCheckIn: boolean; canConfirm: boolean; canCancel: boolean };
+  businessDate: string;
 }) {
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState<StatusFilter>("all");
-  const normalizedSearch = search.trim().toLowerCase();
-  const visible = reservations.filter((reservation) => {
-    const matchesSearch =
-      !normalizedSearch ||
-      [
-        reservation.bookingId,
-        reservation.guestName,
-        reservation.phone,
-        reservation.roomNumber,
-      ].some((value) => value?.toLowerCase().includes(normalizedSearch));
-    return matchesSearch && (status === "all" || reservation.status === status);
-  });
+  const visible = reservations;
 
   return (
     <div>
-      <div className="flex flex-col gap-3 border-b p-4 sm:flex-row sm:items-center">
-        <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            type="search"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search guest, booking ID, phone, or room"
-            aria-label="Search reservations"
-            className="h-9 pl-9"
-          />
-        </div>
-        <Select
-          value={status}
-          onValueChange={(value) => setStatus(value as StatusFilter)}
-        >
-          <SelectTrigger
-            className="h-9 w-full sm:w-44"
-            aria-label="Filter reservation status"
-          >
-            <SelectValue placeholder="All statuses" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
-            <SelectItem value="pending">Pending</SelectItem>
-            <SelectItem value="confirmed">Confirmed</SelectItem>
-            <SelectItem value="checked_in">Checked in</SelectItem>
-            <SelectItem value="checked_out">Checked out</SelectItem>
-            <SelectItem value="cancelled">Cancelled</SelectItem>
-            <SelectItem value="no_show">No show</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
       {visible.length === 0 ? (
         <EmptyState
           icon={TicketX}
           title="No reservations found"
           description="Try a different search or clear the status filter."
-          action={
-            <Button
-              variant="outline"
-              onClick={() => {
-                setSearch("");
-                setStatus("all");
-              }}
-            >
-              Clear filters
-            </Button>
-          }
+          action={null}
         />
       ) : (
         <>
@@ -138,13 +69,12 @@ export function ReservationsTable({
                   <TableHead>Booking</TableHead>
                   <TableHead>Guest</TableHead>
                   <TableHead>Room</TableHead>
-                  <TableHead>Check-in</TableHead>
-                  <TableHead>Check-out</TableHead>
-                  <TableHead>Guests</TableHead>
+                  <TableHead>Stay dates</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Payment</TableHead>
                   <TableHead>Source</TableHead>
                   <TableHead className="text-right">Total</TableHead>
+                  <TableHead className="text-right"><span className="sr-only">Actions</span></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -163,14 +93,8 @@ export function ReservationsTable({
                       {reservation.roomNumber}
                     </TableCell>
                     <TableCell className="whitespace-nowrap">
-                      {formatDate(reservation.checkIn)}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap">
-                      {formatDate(reservation.checkOut)}
-                    </TableCell>
-                    <TableCell>
-                      {reservation.adults ?? 1}
-                      {reservation.children ? ` + ${reservation.children}` : ""}
+                      <p>{formatDate(reservation.checkIn)}–{formatDate(reservation.checkOut)}</p>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">{reservation.adults ?? 1} adult{(reservation.adults ?? 1) === 1 ? "" : "s"}{reservation.children ? ` · ${reservation.children} child${reservation.children === 1 ? "" : "ren"}` : ""}</p>
                     </TableCell>
                     <TableCell>
                       <ReservationStatusBadge status={reservation.status} />
@@ -183,6 +107,9 @@ export function ReservationsTable({
                     </TableCell>
                     <TableCell className="text-right font-medium tabular-nums">
                       {formatCurrency(reservation.total, reservation.currency)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <ReservationActions reservation={reservation} permissions={permissions} businessDate={businessDate} />
                     </TableCell>
                   </TableRow>
                 ))}
@@ -227,17 +154,12 @@ export function ReservationsTable({
                   </div>
                 </div>
                 <PaymentStatusText status={reservation.paymentStatus} />
+                <ReservationActions reservation={reservation} permissions={permissions} businessDate={businessDate} fullWidth />
               </article>
             ))}
           </div>
         </>
       )}
-      <div className="flex items-center justify-between border-t px-4 py-3 text-xs text-muted-foreground">
-        <span>
-          {visible.length} of {reservations.length} reservations
-        </span>
-        <span>Page 1 of 1</span>
-      </div>
     </div>
   );
 }

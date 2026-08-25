@@ -4,6 +4,12 @@ import { Pool } from 'pg';
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) throw new Error('DATABASE_URL is required.');
+const hotelCodeArgument = process.argv.indexOf('--hotel-code');
+const hotelCode = process.argv[hotelCodeArgument + 1]?.trim().toUpperCase();
+if (hotelCodeArgument < 0 || !hotelCode || !/^[A-Z0-9_-]{2,32}$/.test(hotelCode)) {
+  throw new Error('--hotel-code is required and must contain only letters, numbers, _ or -.');
+}
+const escapedHotelCode = hotelCode.replaceAll("'", "''");
 const demoPassword = 'HotelDemo2026!';
 const demoPasswordHash = await argon2.hash(demoPassword, { type: argon2.argon2id });
 
@@ -29,7 +35,7 @@ try {
     SELECT h.id, h.code,
       (SELECT u.id FROM "User" u WHERE u."hotelId"=h.id AND u."deletedAt" IS NULL ORDER BY u."createdAt" LIMIT 1) actor_id,
       '${demoPasswordHash.replaceAll("'", "''")}'::text password_hash
-    FROM "Hotel" h WHERE h."isActive"=true ORDER BY h."createdAt" LIMIT 1;
+    FROM "Hotel" h WHERE h."isActive"=true AND h.code='${escapedHotelCode}';
 
     DO $$ BEGIN
       IF (SELECT count(*) FROM seed_hotel) <> 1 OR (SELECT actor_id FROM seed_hotel) IS NULL THEN
@@ -39,11 +45,6 @@ try {
         RAISE EXCEPTION 'Hotel already contains reservations; refusing to mix or overwrite operational data';
       END IF;
     END $$;
-
-    UPDATE "Hotel" SET phone='+252 61 555 0100', email='reservations@hudheelhotel.so',
-      address='KM4, Maka Al-Mukarama Road, Mogadishu, Somalia',
-      "currencyCode"='USD', timezone='Africa/Mogadishu', "updatedAt"=now()
-    WHERE id=(SELECT id FROM seed_hotel);
 
     INSERT INTO "Floor" (id,"hotelId",number,name,"createdAt","updatedAt")
     SELECT gen_random_uuid(),h.id,n,

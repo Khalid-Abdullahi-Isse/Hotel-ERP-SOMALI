@@ -6,18 +6,18 @@ import type { RoomStatusCount } from "@/types/dashboard";
 import type { HotelRoomStatus } from "@/types/room";
 
 const statusPresentation = {
-  available: { icon: CircleCheck, color: "text-status-available", surface: "bg-emerald-50" },
-  occupied: { icon: BedDouble, color: "text-status-occupied", surface: "bg-blue-50" },
-  reserved: { icon: Clock3, color: "text-status-reserved", surface: "bg-violet-50" },
-  dirty: { icon: CircleAlert, color: "text-status-dirty", surface: "bg-amber-50" },
-  cleaning: { icon: BrushCleaning, color: "text-status-cleaning", surface: "bg-yellow-50" },
-  maintenance: { icon: Wrench, color: "text-status-maintenance", surface: "bg-rose-50" },
-  out_of_service: { icon: CircleAlert, color: "text-slate-600", surface: "bg-slate-100" },
+  available: { icon: CircleCheck, color: "text-status-available", surface: "bg-status-available/10" },
+  occupied: { icon: BedDouble, color: "text-status-occupied", surface: "bg-status-occupied/10" },
+  reserved: { icon: Clock3, color: "text-status-reserved", surface: "bg-status-reserved/10" },
+  dirty: { icon: CircleAlert, color: "text-status-dirty", surface: "bg-status-dirty/10" },
+  cleaning: { icon: BrushCleaning, color: "text-status-cleaning", surface: "bg-status-cleaning/10" },
+  maintenance: { icon: Wrench, color: "text-status-maintenance", surface: "bg-status-maintenance/10" },
+  out_of_service: { icon: CircleAlert, color: "text-status-out-of-service", surface: "bg-status-out-of-service/10" },
 } satisfies Record<HotelRoomStatus, { icon: typeof BedDouble; color: string; surface: string }>;
 
 export function RoomStatusOverview({ statuses }: { statuses: RoomStatusCount[] }) {
   return (
-    <Card className="h-full">
+    <Card className="h-full shadow-none">
       <CardHeader className="border-b"><CardTitle>Room status</CardTitle><p className="text-xs text-muted-foreground">Current hotel inventory</p></CardHeader>
       <CardContent>
         <div className="grid grid-cols-2 gap-x-5 gap-y-4">

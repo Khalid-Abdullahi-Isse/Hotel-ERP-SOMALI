@@ -2,12 +2,14 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 import { AuditLogsService } from '../audit-logs/audit-logs.service.js';
 import { SYSTEM_ROLES } from '../auth/auth.constants.js';
 import type { RequestUser } from '../auth/auth.types.js';
+import { paginatedResponse, paginationOffset } from '../common/pagination/pagination.util.js';
 import { PasswordService } from '../auth/password.service.js';
 import { UserStatus } from '../generated/prisma/enums.js';
 import type { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type { AssignRolesDto } from './dto/assign-roles.dto.js';
 import type { CreateUserDto } from './dto/create-user.dto.js';
+import type { ListUsersQueryDto } from './dto/list-users-query.dto.js';
 import type { ResetPasswordDto } from './dto/reset-password.dto.js';
 import type { UpdateUserDto } from './dto/update-user.dto.js';
 
@@ -58,13 +60,33 @@ export class UsersService {
     return this.view(user);
   }
 
-  async list(actor: RequestUser) {
-    const users = await this.prisma.user.findMany({
-      where: { hotelId: actor.hotelId },
-      include: USER_INCLUDE,
-      orderBy: [{ deletedAt: 'asc' }, { fullName: 'asc' }],
-    });
-    return users.map((user) => this.view(user));
+  async list(query: ListUsersQueryDto, actor: RequestUser) {
+    const search = query.search?.trim();
+    const where: Prisma.UserWhereInput = {
+      hotelId: actor.hotelId,
+      ...(query.status ? { status: query.status } : {}),
+      ...(search
+        ? {
+            OR: [
+              { fullName: { contains: search, mode: 'insensitive' } },
+              { email: { contains: search, mode: 'insensitive' } },
+              { username: { contains: search, mode: 'insensitive' } },
+              { roles: { some: { role: { name: { contains: search, mode: 'insensitive' } } } } },
+            ],
+          }
+        : {}),
+    };
+    const [users, total] = await this.prisma.$transaction([
+      this.prisma.user.findMany({
+        where,
+        include: USER_INCLUDE,
+        orderBy: [{ deletedAt: 'asc' }, { fullName: 'asc' }, { id: 'asc' }],
+        skip: paginationOffset(query.page, query.limit),
+        take: query.limit,
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+    return paginatedResponse(users.map((user) => this.view(user)), query.page, query.limit, total);
   }
 
   async findOne(id: string, actor: RequestUser) {

@@ -39,8 +39,6 @@ export interface ReservationInput {
   email?: string;
   nationality?: string;
   identification?: string;
-  paymentMethod: PaymentMethod;
-  deposit: number;
   notes?: string;
 }
 export interface ReservationRoomTypeOption { value: string; label: string; rateLabel: string; rooms?: Array<{ id: string; number: string }> }

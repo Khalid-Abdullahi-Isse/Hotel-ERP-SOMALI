@@ -16,6 +16,7 @@ import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import { RequirePermissions } from '../common/decorators/permissions.decorator.js';
 import { ApplyDiscountDto } from './dto/apply-discount.dto.js';
 import { CreateReservationDto } from './dto/create-reservation.dto.js';
+import { CreateReservationWithGuestDto } from './dto/create-reservation-with-guest.dto.js';
 import { ListReservationsQueryDto } from './dto/list-reservations-query.dto.js';
 import { ReplaceReservationRoomsDto } from './dto/replace-reservation-rooms.dto.js';
 import { ReservationActionDto } from './dto/reservation-action.dto.js';
@@ -36,6 +37,16 @@ export class ReservationsController {
     return this.reservations.create(dto, actor);
   }
 
+  @Post('with-guest')
+  @RequirePermissions(PERMISSIONS.RESERVATION_CREATE, PERMISSIONS.GUEST_CREATE)
+  @ApiOperation({ summary: 'Atomically create a guest and reservation' })
+  createWithGuest(
+    @Body() dto: CreateReservationWithGuestDto,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    return this.reservations.createWithGuest(dto, actor);
+  }
+
   @Get()
   @RequirePermissions(PERMISSIONS.RESERVATION_VIEW)
   list(@Query() query: ListReservationsQueryDto, @CurrentUser() actor: RequestUser) {
@@ -46,7 +57,7 @@ export class ReservationsController {
   @RequirePermissions(PERMISSIONS.RESERVATION_VIEW)
   @ApiOperation({ summary: 'Get rooms and overlapping reservations for a seven-day timeline' })
   timeline(@Query() query: ReservationTimelineQueryDto, @CurrentUser() actor: RequestUser) {
-    return this.reservations.timeline(query.startDate, actor);
+    return this.reservations.timeline(query, actor);
   }
 
   @Get(':id')

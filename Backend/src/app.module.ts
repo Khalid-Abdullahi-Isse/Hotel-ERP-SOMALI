@@ -1,14 +1,18 @@
 import { Module } from '@nestjs/common';
+import { CacheModule } from '@nestjs/cache-manager';
+import { createKeyv } from '@keyv/redis';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { LoggerModule } from 'nestjs-pino';
 import { MaintenanceModule } from './maintenance/maintenance.module.js';
+import { AccountingModule } from './accounting/accounting.module.js';
 import { RequestTimeoutInterceptor } from './common/interceptors/request-timeout.interceptor.js';
 import { AuditLogsModule } from './audit-logs/audit-logs.module.js';
 import { AvailabilityModule } from './availability/availability.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { ChargesModule } from './charges/charges.module.js';
+import { TenantHttpCacheInterceptor } from './common/interceptors/tenant-http-cache.interceptor.js';
 import { configuration, validateEnvironment } from './config/configuration.js';
 import { DashboardModule } from './dashboard/dashboard.module.js';
 import { HealthModule } from './health/health.module.js';
@@ -31,7 +35,6 @@ import { ServicesModule } from './services/services.module.js';
 import { StaysModule } from './stays/stays.module.js';
 import { UsersModule } from './users/users.module.js';
 import { safeRequestId } from './common/http/request-id.js';
-
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -39,6 +42,16 @@ import { safeRequestId } from './common/http/request-id.js';
       cache: true,
       load: [configuration],
       validate: validateEnvironment,
+    }),
+
+    CacheModule.registerAsync({
+      isGlobal: true,
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        stores: [createKeyv(config.getOrThrow<string>('REDIS_URL'))],
+
+        ttl: config.getOrThrow<number>('CACHE_TTL_MS'),
+      }),
     }),
     ThrottlerModule.forRootAsync({
       inject: [ConfigService],
@@ -85,6 +98,7 @@ import { safeRequestId } from './common/http/request-id.js';
     }),
     PrismaModule,
     AuditLogsModule,
+    AccountingModule,
     AuthModule,
     ChargesModule,
     PaymentMethodsModule,
@@ -112,6 +126,7 @@ import { safeRequestId } from './common/http/request-id.js';
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_INTERCEPTOR, useClass: RequestTimeoutInterceptor },
     { provide: APP_INTERCEPTOR, useClass: MetricsInterceptor },
+    { provide: APP_INTERCEPTOR, useClass: TenantHttpCacheInterceptor },
   ],
 })
 export class AppModule {}

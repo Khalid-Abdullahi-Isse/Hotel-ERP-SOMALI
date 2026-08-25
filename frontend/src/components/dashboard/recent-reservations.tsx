@@ -9,10 +9,10 @@ function formatCurrency(amount: string | number, currency: ReservationSummary["c
   return new Intl.NumberFormat("en-US", { style: "currency", currency, maximumFractionDigits: 0 }).format(Number(amount));
 }
 
-export function RecentReservations({ reservations, title = "Reservations", description = "Bookings by arrival date" }: { reservations: ReservationSummary[]; title?: string; description?: string }) {
+export function RecentReservations({ reservations, title = "Reservations", description = "Bookings by arrival date", viewAllHref = "/reservations" }: { reservations: ReservationSummary[]; title?: string; description?: string; viewAllHref?: string }) {
   return (
-    <Card>
-      <CardHeader className="grid grid-cols-[1fr_auto] border-b"><div><CardTitle>{title}</CardTitle><p className="mt-1 text-xs text-muted-foreground">{description}</p></div><Button asChild variant="ghost" size="sm"><Link href="/reservations">View all</Link></Button></CardHeader>
+    <Card className="shadow-none">
+      <CardHeader className="grid grid-cols-[1fr_auto] border-b"><div><CardTitle>{title}</CardTitle><p className="mt-1 text-xs text-muted-foreground">{description}</p></div><Button asChild variant="ghost" size="sm"><Link href={viewAllHref}>View all</Link></Button></CardHeader>
       <CardContent className="px-0">
         <div className="hidden overflow-x-auto sm:block">
           <Table>

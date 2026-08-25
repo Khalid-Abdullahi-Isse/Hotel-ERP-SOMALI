@@ -5,10 +5,12 @@ import { CheckCircle2, LoaderCircle, Play, Plus, Wrench } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
@@ -49,11 +51,26 @@ export function MaintenanceManager({ requests, rooms, users, canCreate, canUpdat
         <TableHeader><TableRow><TableHead>Room</TableHead><TableHead>Problem</TableHead><TableHead>Assigned to</TableHead><TableHead>Status</TableHead><TableHead>Opened</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
         <TableBody>{requests.map((request) => <TableRow key={request.id}>
           <TableCell className="font-mono font-semibold">{request.room.roomNumber}</TableCell><TableCell><p className="max-w-lg font-medium">{request.problem}</p>{request.notes ? <p className="max-w-lg truncate text-xs text-muted-foreground">{request.notes}</p> : null}</TableCell><TableCell>{request.assignedTo?.fullName ?? "Unassigned"}</TableCell><TableCell><MaintenanceBadge status={request.status} /></TableCell><TableCell className="text-muted-foreground">{new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(request.createdAt))}</TableCell>
-          <TableCell><div className="flex justify-end gap-1">{canUpdate && request.status === "OPEN" ? <Button size="sm" variant="outline" disabled={mutation.isPending} onClick={() => mutation.mutate(() => maintenanceService.start(request.id))}><Play />Start</Button> : null}{canUpdate && request.status === "IN_PROGRESS" ? <Button size="sm" disabled={mutation.isPending} onClick={() => mutation.mutate(() => maintenanceService.complete(request.id, {}))}><CheckCircle2 />Complete</Button> : null}</div></TableCell>
+          <TableCell><div className="flex justify-end gap-1">{canUpdate && request.status === "OPEN" ? <Button size="sm" variant="outline" disabled={mutation.isPending} onClick={() => mutation.mutate(() => maintenanceService.start(request.id))}><Play />Start</Button> : null}{canUpdate && request.status === "IN_PROGRESS" ? <CompleteMaintenanceButton disabled={mutation.isPending} onComplete={(input) => mutation.mutateAsync(() => maintenanceService.complete(request.id, input)).then(() => undefined)} /> : null}</div></TableCell>
         </TableRow>)}</TableBody>
       </Table></div>}
     </Card>
   </div>;
+}
+
+function CompleteMaintenanceButton({ disabled, onComplete }: { disabled: boolean; onComplete: (input: { cost?: string; notes?: string }) => Promise<void> }) {
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [cost, setCost] = useState("");
+  const [notes, setNotes] = useState("");
+  return <AlertDialog open={open} onOpenChange={setOpen}>
+    <AlertDialogTrigger asChild><Button size="sm" disabled={disabled}><CheckCircle2 />Complete</Button></AlertDialogTrigger>
+    <AlertDialogContent>
+      <AlertDialogHeader><AlertDialogTitle>Complete maintenance work?</AlertDialogTitle><AlertDialogDescription>Record the outcome before returning the room to service. Cost is optional.</AlertDialogDescription></AlertDialogHeader>
+      <div className="grid gap-4"><div className="space-y-2"><Label htmlFor="maintenance-cost">Cost</Label><Input id="maintenance-cost" type="number" min="0" step="0.01" value={cost} onChange={(event) => setCost(event.target.value)} placeholder="0.00" /></div><div className="space-y-2"><Label htmlFor="maintenance-completion-notes">Completion notes</Label><Textarea id="maintenance-completion-notes" value={notes} onChange={(event) => setNotes(event.target.value)} maxLength={2000} placeholder="Work completed, parts replaced, or follow-up required." /></div></div>
+      <AlertDialogFooter><AlertDialogCancel disabled={saving}>Cancel</AlertDialogCancel><AlertDialogAction disabled={saving} onClick={async (event) => { event.preventDefault(); setSaving(true); try { await onComplete({ cost: cost || undefined, notes: notes.trim() || undefined }); setOpen(false); } catch { /* Mutation state renders the API error above the table. */ } finally { setSaving(false); } }}>{saving ? <LoaderCircle className="animate-spin" /> : <CheckCircle2 />}{saving ? "Saving..." : "Complete work"}</AlertDialogAction></AlertDialogFooter>
+    </AlertDialogContent>
+  </AlertDialog>;
 }
 
 function MaintenanceBadge({ status }: { status: ApiMaintenanceRequest["status"] }) {

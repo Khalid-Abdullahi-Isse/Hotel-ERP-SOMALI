@@ -22,6 +22,12 @@ const environmentSchema = z
     TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(3).default(0),
     MONITORING_TOKEN: z.string().default(''),
     RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(20).max(10_000).default(100),
+    REDIS_URL: z
+      .string()
+      .url()
+      .regex(/^rediss?:\/\//, 'must use redis:// or rediss://')
+      .default('redis://127.0.0.1:6379'),
+    CACHE_TTL_MS: z.coerce.number().int().min(1_000).max(3_600_000).default(60_000),
   })
   .superRefine((environment, context) => {
     if (environment.NODE_ENV !== 'production') return;
@@ -86,5 +92,7 @@ export function configuration(): Record<string, unknown> {
     TRUST_PROXY_HOPS: Number(process.env.TRUST_PROXY_HOPS ?? 0),
     MONITORING_TOKEN: process.env.MONITORING_TOKEN ?? '',
     RATE_LIMIT_PER_MINUTE: Number(process.env.RATE_LIMIT_PER_MINUTE ?? 100),
+    REDIS_URL: process.env.REDIS_URL ?? 'redis://127.0.0.1:6379',
+    CACHE_TTL_MS: Number(process.env.CACHE_TTL_MS ?? 60_000),
   };
 }

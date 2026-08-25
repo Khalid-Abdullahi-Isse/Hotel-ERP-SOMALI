@@ -4,6 +4,7 @@ import { ReservationStatus, RoomStatus } from '../generated/prisma/enums.js';
 import type { RequestUser } from '../auth/auth.types.js';
 import { parseStayDates } from '../common/dates/stay-dates.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { paginatedResponse, paginationOffset } from '../common/pagination/pagination.util.js';
 import type { SearchAvailabilityQueryDto } from './dto/search-availability-query.dto.js';
 
 export const ACTIVE_BOOKING_STATUSES = [
@@ -33,33 +34,40 @@ export class AvailabilityService {
 
   async search(query: SearchAvailabilityQueryDto, actor: RequestUser) {
     const dates = parseStayDates(query.checkInDate, query.checkOutDate);
-    const rooms = await this.prisma.room.findMany({
-      where: {
-        hotelId: actor.hotelId,
+    const where: PrismaTypes.RoomWhereInput = {
+      hotelId: actor.hotelId,
+      isActive: true,
+      status: query.readyOnly ? RoomStatus.AVAILABLE : { not: RoomStatus.MAINTENANCE },
+      roomType: {
         isActive: true,
-        status: { not: RoomStatus.MAINTENANCE },
-        roomType: {
-          isActive: true,
-          capacityAdults: { gte: query.adults },
-          capacityChildren: { gte: query.children },
-        },
-        ...(query.roomTypeId ? { roomTypeId: query.roomTypeId } : {}),
-        ...(query.floorId ? { floorId: query.floorId } : {}),
-        reservationRooms: {
-          none: {
-            bookingStatus: { in: [...ACTIVE_BOOKING_STATUSES] },
-            checkInDate: { lt: dates.checkOut },
-            checkOutDate: { gt: dates.checkIn },
-          },
+        capacityAdults: { gte: query.adults },
+        capacityChildren: { gte: query.children },
+      },
+      ...(query.roomTypeId ? { roomTypeId: query.roomTypeId } : {}),
+      ...(query.floorId ? { floorId: query.floorId } : {}),
+      reservationRooms: {
+        none: {
+          bookingStatus: { in: [...ACTIVE_BOOKING_STATUSES] },
+          checkInDate: { lt: dates.checkOut },
+          checkOutDate: { gt: dates.checkIn },
         },
       },
-      include: RESERVABLE_ROOM_INCLUDE,
-      orderBy: [{ roomNumber: 'asc' }, { id: 'asc' }],
-    });
+    };
+    const [rooms, total] = await this.prisma.$transaction([
+      this.prisma.room.findMany({
+        where,
+        include: RESERVABLE_ROOM_INCLUDE,
+        orderBy: [{ roomNumber: 'asc' }, { id: 'asc' }],
+        skip: paginationOffset(query.page, query.limit),
+        take: query.limit,
+      }),
+      this.prisma.room.count({ where }),
+    ]);
     return {
       checkInDate: query.checkInDate,
       checkOutDate: query.checkOutDate,
       nights: dates.nights,
+      pagination: paginatedResponse([], query.page, query.limit, total).pagination,
       data: rooms.map((room) => ({
         ...room,
         nightlyRate: room.roomType.basePrice.toString(),

@@ -1,10 +1,11 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { PERMISSIONS } from '../auth/auth.constants.js';
 import type { RequestUser } from '../auth/auth.types.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import { RequirePermissions } from '../common/decorators/permissions.decorator.js';
 import { VoidInvoiceDto } from './dto/void-invoice.dto.js';
+import { ListInvoicesQueryDto } from './dto/list-invoices-query.dto.js';
 import { InvoicesService } from './invoices.service.js';
 @ApiTags('invoices')
 @ApiBearerAuth()
@@ -21,8 +22,8 @@ export class InvoicesController {
   }
   @Get('invoices')
   @RequirePermissions(PERMISSIONS.INVOICE_VIEW)
-  list(@CurrentUser() actor: RequestUser) {
-    return this.invoices.list(actor);
+  list(@Query() query: ListInvoicesQueryDto, @CurrentUser() actor: RequestUser) {
+    return this.invoices.list(query, actor);
   }
   @Get('invoices/:id')
   @RequirePermissions(PERMISSIONS.INVOICE_VIEW)

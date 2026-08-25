@@ -68,6 +68,36 @@ enum MaintenanceStatus {
   DONE
 }
 
+enum AccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  REVENUE
+  EXPENSE
+}
+
+enum NormalBalance {
+  DEBIT
+  CREDIT
+}
+
+enum AccountingJournalType {
+  GENERAL
+  SALES
+  CASH
+  BANK
+  MOBILE_MONEY
+  PURCHASE
+  ADJUSTMENT
+  NIGHT_AUDIT
+}
+
+enum JournalEntryStatus {
+  DRAFT
+  POSTED
+  REVERSED
+}
+
 model Hotel {
   id                  String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   code                String               @unique @db.VarChar(32)
@@ -96,36 +126,44 @@ model Hotel {
   housekeepingTasks   HousekeepingTask[]
   maintenanceRequests MaintenanceRequest[]
   auditLogs           AuditLog[]
+  accounts            Account[]
+  accountingJournals  AccountingJournal[]
+  journalEntries      JournalEntry[]
+  accountingSettings  AccountingSettings?
+  accountingSequences AccountingSequence[]
 }
 
 model User {
-  id                   String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  hotelId              String               @db.Uuid
-  email                String               @unique @db.VarChar(254)
-  username             String               @unique @db.VarChar(64)
-  passwordHash         String               @db.VarChar(255)
-  fullName             String               @db.VarChar(160)
-  status               UserStatus           @default(ACTIVE)
-  failedLoginAttempts  Int                  @default(0)
-  lockedUntil          DateTime?            @db.Timestamptz(3)
-  lastLoginAt          DateTime?            @db.Timestamptz(3)
-  deletedAt            DateTime?            @db.Timestamptz(3)
-  createdAt            DateTime             @default(now()) @db.Timestamptz(3)
-  updatedAt            DateTime             @updatedAt @db.Timestamptz(3)
-  hotel                Hotel                @relation(fields: [hotelId], references: [id], onDelete: Restrict)
-  roles                UserRole[]
-  authSessions         AuthSession[]
-  createdExpenses      Expense[]
-  assignedHousekeeping HousekeepingTask[]   @relation("HousekeepingAssignee")
-  assignedMaintenance  MaintenanceRequest[] @relation("MaintenanceAssignee")
-  createdMaintenance   MaintenanceRequest[] @relation("MaintenanceCreator")
-  reservationEvents    ReservationHistory[]
-  createdPayments      Payment[]            @relation("PaymentCreator")
-  voidedCharges        Charge[]             @relation("ChargeVoider")
-  issuedInvoices       Invoice[]            @relation("InvoiceIssuer")
-  voidedInvoices       Invoice[]            @relation("InvoiceVoider")
-  reversedExpenses     Expense[]            @relation("ExpenseReverser")
-  auditLogs            AuditLog[]
+  id                     String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  hotelId                String               @db.Uuid
+  email                  String               @unique @db.VarChar(254)
+  username               String               @unique @db.VarChar(64)
+  passwordHash           String               @db.VarChar(255)
+  fullName               String               @db.VarChar(160)
+  status                 UserStatus           @default(ACTIVE)
+  failedLoginAttempts    Int                  @default(0)
+  lockedUntil            DateTime?            @db.Timestamptz(3)
+  lastLoginAt            DateTime?            @db.Timestamptz(3)
+  deletedAt              DateTime?            @db.Timestamptz(3)
+  createdAt              DateTime             @default(now()) @db.Timestamptz(3)
+  updatedAt              DateTime             @updatedAt @db.Timestamptz(3)
+  hotel                  Hotel                @relation(fields: [hotelId], references: [id], onDelete: Restrict)
+  roles                  UserRole[]
+  authSessions           AuthSession[]
+  createdExpenses        Expense[]
+  assignedHousekeeping   HousekeepingTask[]   @relation("HousekeepingAssignee")
+  assignedMaintenance    MaintenanceRequest[] @relation("MaintenanceAssignee")
+  createdMaintenance     MaintenanceRequest[] @relation("MaintenanceCreator")
+  reservationEvents      ReservationHistory[]
+  createdPayments        Payment[]            @relation("PaymentCreator")
+  voidedCharges          Charge[]             @relation("ChargeVoider")
+  issuedInvoices         Invoice[]            @relation("InvoiceIssuer")
+  voidedInvoices         Invoice[]            @relation("InvoiceVoider")
+  reversedExpenses       Expense[]            @relation("ExpenseReverser")
+  auditLogs              AuditLog[]
+  createdJournalEntries  JournalEntry[]       @relation("JournalEntryCreator")
+  postedJournalEntries   JournalEntry[]       @relation("JournalEntryPoster")
+  reversedJournalEntries JournalEntry[]       @relation("JournalEntryReverser")
 
   @@index([hotelId, status])
 }
@@ -355,19 +393,22 @@ model ReservationHistory {
 }
 
 model Service {
-  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  hotelId      String   @db.Uuid
-  name         String   @db.VarChar(120)
-  description  String?
-  defaultPrice Decimal  @db.Decimal(14, 2)
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt    DateTime @updatedAt @db.Timestamptz(3)
-  hotel        Hotel    @relation(fields: [hotelId], references: [id], onDelete: Restrict)
-  charges      Charge[]
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  hotelId          String   @db.Uuid
+  name             String   @db.VarChar(120)
+  description      String?
+  defaultPrice     Decimal  @db.Decimal(14, 2)
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  revenueAccountId String?  @db.Uuid
+  hotel            Hotel    @relation(fields: [hotelId], references: [id], onDelete: Restrict)
+  revenueAccount   Account? @relation(fields: [revenueAccountId], references: [id], onDelete: Restrict)
+  charges          Charge[]
 
   @@unique([hotelId, name])
   @@index([hotelId, isActive])
+  @@index([revenueAccountId])
 }
 
 model Charge {
@@ -397,18 +438,21 @@ model Charge {
 }
 
 model PaymentMethod {
-  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  hotelId   String    @db.Uuid
-  name      String    @db.VarChar(80)
-  isActive  Boolean   @default(true)
-  createdAt DateTime  @default(now()) @db.Timestamptz(3)
-  updatedAt DateTime  @updatedAt @db.Timestamptz(3)
-  hotel     Hotel     @relation(fields: [hotelId], references: [id], onDelete: Restrict)
-  payments  Payment[]
-  expenses  Expense[]
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  hotelId         String    @db.Uuid
+  name            String    @db.VarChar(80)
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime  @updatedAt @db.Timestamptz(3)
+  ledgerAccountId String?   @db.Uuid
+  hotel           Hotel     @relation(fields: [hotelId], references: [id], onDelete: Restrict)
+  ledgerAccount   Account?  @relation(fields: [ledgerAccountId], references: [id], onDelete: Restrict)
+  payments        Payment[]
+  expenses        Expense[]
 
   @@unique([hotelId, name])
   @@index([hotelId, isActive])
+  @@index([ledgerAccountId])
 }
 
 model Payment {
@@ -491,17 +535,20 @@ model InvoiceItem {
 }
 
 model ExpenseCategory {
-  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  hotelId   String    @db.Uuid
-  name      String    @db.VarChar(100)
-  isActive  Boolean   @default(true)
-  createdAt DateTime  @default(now()) @db.Timestamptz(3)
-  updatedAt DateTime  @updatedAt @db.Timestamptz(3)
-  hotel     Hotel     @relation(fields: [hotelId], references: [id], onDelete: Restrict)
-  expenses  Expense[]
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  hotelId          String    @db.Uuid
+  name             String    @db.VarChar(100)
+  isActive         Boolean   @default(true)
+  createdAt        DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime  @updatedAt @db.Timestamptz(3)
+  expenseAccountId String?   @db.Uuid
+  hotel            Hotel     @relation(fields: [hotelId], references: [id], onDelete: Restrict)
+  expenseAccount   Account?  @relation(fields: [expenseAccountId], references: [id], onDelete: Restrict)
+  expenses         Expense[]
 
   @@unique([hotelId, name])
   @@index([hotelId, isActive])
+  @@index([expenseAccountId])
 }
 
 model Expense {
@@ -600,4 +647,157 @@ model AuditLog {
   @@index([hotelId, createdAt])
   @@index([entityType, entityId, createdAt])
   @@index([userId, createdAt])
+}
+
+model Account {
+  id                      String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  hotelId                 String               @db.Uuid
+  code                    String               @db.VarChar(32)
+  name                    String               @db.VarChar(160)
+  type                    AccountType
+  subType                 String?              @db.VarChar(64)
+  normalBalance           NormalBalance
+  parentAccountId         String?              @db.Uuid
+  currency                String               @db.Char(3)
+  isActive                Boolean              @default(true)
+  allowManualPosting      Boolean              @default(true)
+  createdAt               DateTime             @default(now()) @db.Timestamptz(3)
+  updatedAt               DateTime             @updatedAt @db.Timestamptz(3)
+  hotel                   Hotel                @relation(fields: [hotelId], references: [id], onDelete: Restrict)
+  parent                  Account?             @relation("AccountHierarchy", fields: [parentAccountId], references: [id], onDelete: Restrict)
+  children                Account[]            @relation("AccountHierarchy")
+  journalLines            JournalLine[]
+  paymentMethods          PaymentMethod[]
+  services                Service[]
+  expenseCategories       ExpenseCategory[]
+  settingsRoomRevenue     AccountingSettings[] @relation("SettingsRoomRevenue")
+  settingsGuestReceivable AccountingSettings[] @relation("SettingsGuestReceivable")
+  settingsCash            AccountingSettings[] @relation("SettingsCash")
+  settingsBank            AccountingSettings[] @relation("SettingsBank")
+  settingsMobileMoney     AccountingSettings[] @relation("SettingsMobileMoney")
+  settingsDeposit         AccountingSettings[] @relation("SettingsDeposit")
+  settingsTaxPayable      AccountingSettings[] @relation("SettingsTaxPayable")
+  settingsServiceRevenue  AccountingSettings[] @relation("SettingsServiceRevenue")
+  settingsDiscount        AccountingSettings[] @relation("SettingsDiscount")
+  settingsExpense         AccountingSettings[] @relation("SettingsExpense")
+
+  @@unique([hotelId, code])
+  @@index([hotelId, type, isActive])
+  @@index([parentAccountId])
+}
+
+model AccountingJournal {
+  id        String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  hotelId   String                @db.Uuid
+  code      String                @db.VarChar(24)
+  name      String                @db.VarChar(120)
+  type      AccountingJournalType
+  isActive  Boolean               @default(true)
+  createdAt DateTime              @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime              @updatedAt @db.Timestamptz(3)
+  hotel     Hotel                 @relation(fields: [hotelId], references: [id], onDelete: Restrict)
+  entries   JournalEntry[]
+
+  @@unique([hotelId, code])
+  @@index([hotelId, type, isActive])
+}
+
+model JournalEntry {
+  id               String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  hotelId          String             @db.Uuid
+  journalId        String             @db.Uuid
+  entryNumber      String             @db.VarChar(40)
+  businessDate     DateTime           @db.Date
+  postingDate      DateTime           @db.Timestamptz(3)
+  sourceType       String             @db.VarChar(64)
+  sourceId         String?            @db.Uuid
+  reference        String?            @db.VarChar(120)
+  description      String             @db.VarChar(255)
+  status           JournalEntryStatus @default(DRAFT)
+  createdById      String             @db.Uuid
+  postedById       String?            @db.Uuid
+  postedAt         DateTime?          @db.Timestamptz(3)
+  reversedEntryId  String?            @unique @db.Uuid
+  reversalEntryId  String?            @unique @db.Uuid
+  reversalReason   String?            @db.VarChar(500)
+  reversedById     String?            @db.Uuid
+  reversedAt       DateTime?          @db.Timestamptz(3)
+  createdAt        DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime           @updatedAt @db.Timestamptz(3)
+  hotel            Hotel              @relation(fields: [hotelId], references: [id], onDelete: Restrict)
+  journal          AccountingJournal  @relation(fields: [journalId], references: [id], onDelete: Restrict)
+  createdBy        User               @relation("JournalEntryCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  postedBy         User?              @relation("JournalEntryPoster", fields: [postedById], references: [id], onDelete: Restrict)
+  reversedBy       User?              @relation("JournalEntryReverser", fields: [reversedById], references: [id], onDelete: Restrict)
+  reversedEntry    JournalEntry?      @relation("ReversalToOriginal", fields: [reversedEntryId], references: [id], onDelete: Restrict)
+  reversalOf       JournalEntry?      @relation("ReversalToOriginal")
+  reversalEntry    JournalEntry?      @relation("OriginalToReversal", fields: [reversalEntryId], references: [id], onDelete: Restrict)
+  reversedOriginal JournalEntry?      @relation("OriginalToReversal")
+  lines            JournalLine[]
+
+  @@unique([hotelId, entryNumber])
+  @@unique([hotelId, sourceType, sourceId])
+  @@index([hotelId, businessDate, status])
+  @@index([hotelId, journalId, postingDate])
+  @@index([sourceType, sourceId])
+}
+
+model JournalLine {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  journalEntryId String       @db.Uuid
+  accountId      String       @db.Uuid
+  description    String?      @db.VarChar(255)
+  debit          Decimal      @default(0) @db.Decimal(19, 4)
+  credit         Decimal      @default(0) @db.Decimal(19, 4)
+  currency       String       @db.Char(3)
+  exchangeRate   Decimal      @default(1) @db.Decimal(19, 8)
+  sourceType     String?      @db.VarChar(64)
+  sourceId       String?      @db.Uuid
+  createdAt      DateTime     @default(now()) @db.Timestamptz(3)
+  journalEntry   JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Restrict)
+  account        Account      @relation(fields: [accountId], references: [id], onDelete: Restrict)
+
+  @@index([journalEntryId])
+  @@index([accountId, journalEntryId])
+  @@index([sourceType, sourceId])
+}
+
+model AccountingSettings {
+  id                              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  hotelId                         String   @unique @db.Uuid
+  defaultRoomRevenueAccountId     String   @db.Uuid
+  defaultGuestReceivableAccountId String   @db.Uuid
+  defaultCashAccountId            String   @db.Uuid
+  defaultBankAccountId            String   @db.Uuid
+  defaultMobileMoneyAccountId     String   @db.Uuid
+  defaultDepositAccountId         String   @db.Uuid
+  defaultTaxPayableAccountId      String   @db.Uuid
+  defaultServiceRevenueAccountId  String   @db.Uuid
+  defaultDiscountAccountId        String   @db.Uuid
+  defaultExpenseAccountId         String   @db.Uuid
+  baseCurrency                    String   @db.Char(3)
+  discountPostingMode             String   @default("CONTRA_REVENUE") @db.VarChar(32)
+  createdAt                       DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt                       DateTime @updatedAt @db.Timestamptz(3)
+  hotel                           Hotel    @relation(fields: [hotelId], references: [id], onDelete: Restrict)
+  defaultRoomRevenueAccount       Account  @relation("SettingsRoomRevenue", fields: [defaultRoomRevenueAccountId], references: [id], onDelete: Restrict)
+  defaultGuestReceivableAccount   Account  @relation("SettingsGuestReceivable", fields: [defaultGuestReceivableAccountId], references: [id], onDelete: Restrict)
+  defaultCashAccount              Account  @relation("SettingsCash", fields: [defaultCashAccountId], references: [id], onDelete: Restrict)
+  defaultBankAccount              Account  @relation("SettingsBank", fields: [defaultBankAccountId], references: [id], onDelete: Restrict)
+  defaultMobileMoneyAccount       Account  @relation("SettingsMobileMoney", fields: [defaultMobileMoneyAccountId], references: [id], onDelete: Restrict)
+  defaultDepositAccount           Account  @relation("SettingsDeposit", fields: [defaultDepositAccountId], references: [id], onDelete: Restrict)
+  defaultTaxPayableAccount        Account  @relation("SettingsTaxPayable", fields: [defaultTaxPayableAccountId], references: [id], onDelete: Restrict)
+  defaultServiceRevenueAccount    Account  @relation("SettingsServiceRevenue", fields: [defaultServiceRevenueAccountId], references: [id], onDelete: Restrict)
+  defaultDiscountAccount          Account  @relation("SettingsDiscount", fields: [defaultDiscountAccountId], references: [id], onDelete: Restrict)
+  defaultExpenseAccount           Account  @relation("SettingsExpense", fields: [defaultExpenseAccountId], references: [id], onDelete: Restrict)
+}
+
+model AccountingSequence {
+  hotelId   String   @db.Uuid
+  key       String   @db.VarChar(48)
+  nextValue BigInt   @default(1)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  hotel     Hotel    @relation(fields: [hotelId], references: [id], onDelete: Restrict)
+
+  @@id([hotelId, key])
 }

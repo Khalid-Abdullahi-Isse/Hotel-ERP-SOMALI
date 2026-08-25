@@ -26,7 +26,7 @@ describe("roomService", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("serializes list filters using the backend enum and boolean contract", async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: { data: [apiRoom], pagination: { page: 1, pageSize: 25, total: 1, pageCount: 1 } } });
+    vi.mocked(api.get).mockResolvedValue({ data: { data: [apiRoom], pagination: { page: 1, limit: 30, total: 1, totalPages: 1, hasNextPage: false, hasPreviousPage: false } } });
     await roomService.list({ page: 1, status: "maintenance", isActive: false });
     expect(api.get).toHaveBeenCalledWith("/rooms", { params: { page: 1, status: "MAINTENANCE", isActive: false } });
   });

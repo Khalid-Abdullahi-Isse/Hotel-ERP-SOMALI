@@ -1,24 +1,81 @@
 import type { Metadata } from "next";
-import { InvoicesTable } from "@/components/finance/invoices-table";
-import { MetricGrid } from "@/components/shared/metric-grid";
+import { BookOpen, Landmark, Scale, TrendingUp } from "lucide-react";
+import {
+  AccountingNav,
+  accountingMoney,
+  accountingPeriod,
+} from "@/components/accounting/accounting-nav";
 import { PageHeader } from "@/components/shared/page-header";
-import { getInvoices } from "@/services/catalog.server";
-import { getExpenses, getPayments } from "@/services/finance.server";
-import type { FinanceMetric } from "@/types/finance";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  getAccountingAccounts,
+  getBalanceSheet,
+  getProfitLoss,
+} from "@/services/accounting.server";
 
 export const metadata: Metadata = { title: "Accounting" };
+
 export default async function AccountingPage() {
-  const [payments, expenses, invoices] = await Promise.all([getPayments(), getExpenses(), getInvoices()]);
-  const received = payments.filter((item) => item.status === "completed").reduce((sum, item) => sum + item.amount, 0);
-  const refunded = payments.filter((item) => item.status === "refunded").reduce((sum, item) => sum + item.amount, 0);
-  const spent = expenses.filter((item) => item.status === "approved").reduce((sum, item) => sum + item.amount, 0);
-  const outstanding = invoices.reduce((sum, item) => sum + Number(item.outstandingAmount), 0);
-  const currency = payments[0]?.currency ?? expenses[0]?.currency ?? "USD";
-  const metrics: FinanceMetric[] = [
-    { label: "Payments received", value: received, currency, detail: "saved transactions", tone: "success" },
-    { label: "Refunds", value: refunded, currency, detail: "saved refunds", tone: "warning" },
-    { label: "Expenses", value: spent, currency, detail: "excluding reversals", tone: "warning" },
-    { label: "Outstanding", value: outstanding, currency, detail: "open invoice balance" },
+  const period = accountingPeriod();
+  const [accounts, profitLoss, balanceSheet] = await Promise.all([
+    getAccountingAccounts({ page: 1 }),
+    getProfitLoss(period.dateFrom, period.dateTo),
+    getBalanceSheet(period.dateTo),
+  ]);
+  const currency = profitLoss.report.currency;
+  const metrics = [
+    { label: "Revenue", value: profitLoss.totals.revenue, icon: TrendingUp },
+    {
+      label: "Net profit / loss",
+      value: profitLoss.totals.netProfitLoss,
+      icon: Scale,
+    },
+    { label: "Assets", value: balanceSheet.totals.assets, icon: Landmark },
+    {
+      label: "Ledger accounts",
+      value: String(accounts.pagination.total),
+      icon: BookOpen,
+      count: true,
+    },
   ];
-  return <div className="space-y-6"><PageHeader title="Accounting" description="Financial records loaded with standard HTTP requests." /><MetricGrid metrics={metrics} /><InvoicesTable invoices={invoices} /></div>;
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Accounting"
+        description="Posted double-entry ledger results for the current business month."
+      />
+      <AccountingNav />
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {metrics.map((metric) => (
+          <Card key={metric.label}>
+            <CardHeader className="grid grid-cols-[1fr_auto] items-center">
+              <CardTitle className="text-sm text-muted-foreground">
+                {metric.label}
+              </CardTitle>
+              <metric.icon className="size-4 text-primary" aria-hidden="true" />
+            </CardHeader>
+            <CardContent className="text-2xl font-semibold tabular-nums">
+              {metric.count
+                ? Number(metric.value).toLocaleString()
+                : accountingMoney(metric.value, currency)}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+      {accounts.pagination.total === 0 ? (
+        <Card>
+          <CardContent className="py-10 text-center">
+            <p className="font-medium">
+              Accounting has not been initialized for this hotel.
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              A user with accounting management permission must initialize the
+              chart and mappings before posting entries.
+            </p>
+          </CardContent>
+        </Card>
+      ) : null}
+    </div>
+  );
 }

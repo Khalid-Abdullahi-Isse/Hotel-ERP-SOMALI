@@ -1,29 +1,18 @@
-import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
+  IsArray,
   IsEnum,
-  IsInt,
   IsOptional,
   IsString,
   IsUUID,
   Matches,
-  Max,
   MaxLength,
-  Min,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { ReservationStatus } from '../../generated/prisma/enums.js';
+import { PaginationQueryDto } from '../../common/pagination/pagination-query.dto.js';
 
-export class ListReservationsQueryDto {
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  page = 1;
-
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @Max(100)
-  pageSize = 25;
-
+export class ListReservationsQueryDto extends PaginationQueryDto {
   @IsOptional()
   @IsString()
   @MaxLength(160)
@@ -36,6 +25,16 @@ export class ListReservationsQueryDto {
   @IsOptional()
   @IsUUID('4')
   roomId?: string;
+
+  @IsOptional()
+  @Transform((params) => {
+    const value: unknown = params.value;
+    return Array.isArray(value) ? value.map((entry: unknown) => String(entry)) : String(value).split(',');
+  })
+  @IsArray()
+  @ArrayMaxSize(30)
+  @IsUUID('4', { each: true })
+  roomIds?: string[];
 
   @IsOptional()
   @IsEnum(ReservationStatus)

@@ -5,6 +5,7 @@ import { Check, LoaderCircle, Pencil, Plus, RotateCcw, Trash2, X } from "lucide-
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -118,12 +119,10 @@ function CatalogTable({ props, pending, onEdit, onToggle, onDelete }: {
             <TableCell><div className="flex justify-end gap-1">
               {props.canManage ? <Button variant="ghost" size="icon-sm" onClick={() => onEdit(item.id)} aria-label="Edit"><Pencil /></Button> : null}
               {props.canManage && props.kind === "floors" ? (
-                <Button variant="ghost" size="icon-sm" disabled={pending || (item as ApiFloor)._count?.rooms !== 0} onClick={() => onDelete(item.id)} aria-label="Delete floor"><Trash2 /></Button>
+                <CatalogDestructiveAction disabled={pending || (item as ApiFloor)._count?.rooms !== 0} label="Delete floor" description="This permanently removes the empty floor from the property catalog." onConfirm={() => onDelete(item.id)}><Trash2 /></CatalogDestructiveAction>
               ) : null}
               {props.canManage && props.kind !== "floors" ? (
-                <Button variant="ghost" size="icon-sm" disabled={pending} onClick={() => onToggle(item.id, !(item as ApiRoomType | ApiService | ApiPaymentMethod).isActive)} aria-label={(item as ApiRoomType).isActive ? "Deactivate" : "Restore"}>
-                  {(item as ApiRoomType).isActive ? <X /> : <RotateCcw />}
-                </Button>
+                (item as ApiRoomType | ApiService | ApiPaymentMethod).isActive ? <CatalogDestructiveAction disabled={pending} label={`Deactivate ${singular(props.kind)}`} description="The record stays in history but will no longer be available for new operational entries." onConfirm={() => onToggle(item.id, false)}><X /></CatalogDestructiveAction> : <Button variant="ghost" size="icon-sm" disabled={pending} onClick={() => onToggle(item.id, true)} aria-label="Restore"><RotateCcw /></Button>
               ) : null}
             </div></TableCell>
           </TableRow>
@@ -131,6 +130,10 @@ function CatalogTable({ props, pending, onEdit, onToggle, onDelete }: {
       </Table>
     </div>
   );
+}
+
+function CatalogDestructiveAction({ disabled, label, description, onConfirm, children }: { disabled: boolean; label: string; description: string; onConfirm: () => void; children: React.ReactNode }) {
+  return <AlertDialog><AlertDialogTrigger asChild><Button variant="ghost" size="icon-sm" disabled={disabled} aria-label={label}>{children}</Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>{label}?</AlertDialogTitle><AlertDialogDescription>{description}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={onConfirm}>{label}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>;
 }
 
 function FloorCells({ item }: { item: ApiFloor }) {

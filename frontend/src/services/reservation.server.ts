@@ -5,6 +5,9 @@ import type {
   ApiReservation,
   ApiReservationStatus,
   ApiReservationTimelineResult,
+  ApiFolio,
+  ApiGuest,
+  ApiReservationPayments,
 } from "@/types/api-contracts";
 import type { PaginatedResponse } from "@/types/api";
 import type {
@@ -12,6 +15,9 @@ import type {
   ReservationSummary,
 } from "@/types/reservation";
 import type { TimelineRoom } from "@/types/timeline";
+import { listQuery } from "@/lib/pagination";
+import { getHotelContext } from "@/services/system.server";
+import type { CurrencyCode } from "@/types/finance";
 
 const statuses: Record<ApiReservationStatus, ReservationStatus> = {
   PENDING: "pending",
@@ -21,7 +27,7 @@ const statuses: Record<ApiReservationStatus, ReservationStatus> = {
   CANCELLED: "cancelled",
   NO_SHOW: "no_show",
 };
-function adapt(reservation: ApiReservation): ReservationSummary {
+function adapt(reservation: ApiReservation, currency: CurrencyCode): ReservationSummary {
   return {
     id: reservation.id,
     bookingId: reservation.bookingNumber,
@@ -36,49 +42,54 @@ function adapt(reservation: ApiReservation): ReservationSummary {
     children: reservation.children,
     status: statuses[reservation.status],
     total: reservation.estimatedTotal,
-    currency: "USD",
+    currency,
   };
 }
 export async function getReservations(
   params: {
     page?: number;
-    pageSize?: number;
+    limit?: number;
     search?: string;
     status?: ReservationStatus;
     arrivalFrom?: string;
     arrivalTo?: string;
   } = {},
 ): Promise<PaginatedResponse<ReservationSummary>> {
-  const query = new URLSearchParams();
-  Object.entries(params).forEach(([key, value]) => {
-    if (value !== undefined && value !== "")
-      query.set(
-        key,
-        key === "status" ? String(value).toUpperCase() : String(value),
-      );
-  });
-  const response = await serverApi<ApiPage<ApiReservation>>(
-    `/reservations?${query}`,
-  );
+  const normalized = { ...params, status: params.status?.toUpperCase() };
+  const [response, hotel] = await Promise.all([
+    serverApi<ApiPage<ApiReservation>>(`/reservations?${listQuery(normalized)}`),
+    getHotelContext(),
+  ]);
   return {
-    data: response.data.map(adapt),
-    meta: {
-      page: response.pagination.page,
-      limit: response.pagination.pageSize,
-      total: response.pagination.total,
-      totalPages: response.pagination.pageCount,
-    },
+    data: response.data.map((reservation) => adapt(reservation, hotel.currencyCode)),
+    pagination: response.pagination,
   };
+}
+
+export async function getReservation(id: string) {
+  return serverApi<ApiReservation>(`/reservations/${encodeURIComponent(id)}`);
+}
+
+export async function getCheckInReservation(id: string) {
+  const reservation = await getReservation(id);
+  const [guest, folio, payments, hotel] = await Promise.all([
+    serverApi<ApiGuest>(`/guests/${encodeURIComponent(reservation.guestId)}`),
+    serverApi<ApiFolio>(`/reservations/${encodeURIComponent(id)}/folio`),
+    serverApi<ApiReservationPayments>(`/reservations/${encodeURIComponent(id)}/payments`),
+    getHotelContext(),
+  ]);
+  return { reservation, guest, folio, payments, hotel };
 }
 
 export async function getReservationTimeline(
   startDate: string,
-): Promise<TimelineRoom[]> {
+  page = 1,
+): Promise<PaginatedResponse<TimelineRoom>> {
   const start = new Date(`${startDate}T00:00:00.000Z`);
   const end = new Date(start);
   end.setUTCDate(end.getUTCDate() + 7);
-  const { rooms, reservations } = await serverApi<ApiReservationTimelineResult>(
-    `/reservations/timeline?startDate=${encodeURIComponent(startDate)}`,
+  const { rooms, reservations, pagination } = await serverApi<ApiReservationTimelineResult>(
+    `/reservations/timeline?${listQuery({ startDate, page })}`,
   );
   const byRoom = new Map(
     rooms.map((room) => [
@@ -120,5 +131,5 @@ export async function getReservationTimeline(
       });
     }
   }
-  return [...byRoom.values()];
+  return { data: [...byRoom.values()], pagination };
 }

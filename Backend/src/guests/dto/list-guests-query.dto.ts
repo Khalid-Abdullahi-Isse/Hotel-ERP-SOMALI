@@ -1,18 +1,7 @@
-import { Type } from 'class-transformer';
-import { IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
+import { IsOptional, IsString, MaxLength } from 'class-validator';
+import { PaginationQueryDto } from '../../common/pagination/pagination-query.dto.js';
 
-export class ListGuestsQueryDto {
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  page = 1;
-
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @Max(100)
-  pageSize = 25;
-
+export class ListGuestsQueryDto extends PaginationQueryDto {
   @IsOptional()
   @IsString()
   @MaxLength(160)

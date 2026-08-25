@@ -23,8 +23,9 @@ describe("API adapters", () => {
   });
 
   it("maps backend pagination to the frontend meta contract", () => {
-    const result = adaptPage({ data: [apiRoom], pagination: { page: 2, pageSize: 10, total: 21, pageCount: 3 } }, adaptRoom);
-    expect(result.meta).toEqual({ page: 2, limit: 10, total: 21, totalPages: 3 });
+    const pagination = { page: 2, limit: 10, total: 21, totalPages: 3, hasNextPage: true, hasPreviousPage: true };
+    const result = adaptPage({ data: [apiRoom], pagination }, adaptRoom);
+    expect(result.pagination).toEqual(pagination);
   });
 
   it("preserves roles and permission keys on authenticated users", () => {

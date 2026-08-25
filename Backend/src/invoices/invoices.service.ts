@@ -1,12 +1,14 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
 import { Prisma } from '../generated/prisma/client.js';
-import { InvoiceStatus, ReservationStatus } from '../generated/prisma/enums.js';
+import { InvoiceStatus, PaymentKind, PaymentStatus, ReservationStatus } from '../generated/prisma/enums.js';
 import { AuditLogsService } from '../audit-logs/audit-logs.service.js';
 import type { RequestUser } from '../auth/auth.types.js';
 import { runSerializable } from '../common/database/serializable-transaction.js';
+import { paginatedResponse, paginationOffset } from '../common/pagination/pagination.util.js';
 import { PaymentsService } from '../payments/payments.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import type { ListInvoicesQueryDto } from './dto/list-invoices-query.dto.js';
 const INCLUDE = {
   reservation: {
     select: { id: true, bookingNumber: true, guest: { select: { id: true, fullName: true } } },
@@ -14,6 +16,12 @@ const INCLUDE = {
   items: { orderBy: { createdAt: 'asc' } },
   issuedBy: { select: { id: true, fullName: true } },
   voidedBy: { select: { id: true, fullName: true } },
+} as const;
+const LIST_INCLUDE = {
+  hotel: { select: { currencyCode: true } },
+  reservation: {
+    select: { id: true, bookingNumber: true, guest: { select: { id: true, fullName: true } } },
+  },
 } as const;
 @Injectable()
 export class InvoicesService {
@@ -102,13 +110,65 @@ export class InvoicesService {
       return { idempotentReplay: false, invoice: await this.view(issued, tx) };
     });
   }
-  async list(actor: RequestUser) {
-    const values = await this.prisma.invoice.findMany({
-      where: { hotelId: actor.hotelId },
-      include: INCLUDE,
-      orderBy: { createdAt: 'desc' },
-    });
-    return Promise.all(values.map((v) => this.view(v, this.prisma)));
+  async list(query: ListInvoicesQueryDto, actor: RequestUser) {
+    const search = query.search?.trim();
+    const where: Prisma.InvoiceWhereInput = {
+      hotelId: actor.hotelId,
+      ...(query.status ? { status: query.status } : {}),
+      ...(search
+        ? {
+            OR: [
+              { invoiceNumber: { contains: search, mode: 'insensitive' } },
+              { reservation: { bookingNumber: { contains: search, mode: 'insensitive' } } },
+              { reservation: { guest: { fullName: { contains: search, mode: 'insensitive' } } } },
+            ],
+          }
+        : {}),
+    };
+    const [values, total] = await this.prisma.$transaction([
+      this.prisma.invoice.findMany({
+        where,
+        include: LIST_INCLUDE,
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        skip: paginationOffset(query.page, query.limit),
+        take: query.limit,
+      }),
+      this.prisma.invoice.count({ where }),
+    ]);
+    const reservationIds = values.map((value) => value.reservationId);
+    const paymentTotals = reservationIds.length
+      ? await this.prisma.payment.groupBy({
+          by: ['reservationId', 'kind'],
+          where: { reservationId: { in: reservationIds }, status: PaymentStatus.COMPLETED },
+          _sum: { amount: true },
+        })
+      : [];
+    const totals = new Map(
+      paymentTotals.map((entry) => [
+        `${entry.reservationId}:${entry.kind}`,
+        entry._sum.amount ?? new Prisma.Decimal(0),
+      ]),
+    );
+    return paginatedResponse(
+      values.map((value) => {
+        const paid = totals.get(`${value.reservationId}:${PaymentKind.PAYMENT}`) ?? new Prisma.Decimal(0);
+        const refunded = totals.get(`${value.reservationId}:${PaymentKind.REFUND}`) ?? new Prisma.Decimal(0);
+        const netPaid = paid.minus(refunded);
+        return {
+          ...value,
+          subtotal: value.subtotal.toString(),
+          discountAmount: value.discountAmount.toString(),
+          totalAmount: value.totalAmount.toString(),
+          paidAmount: paid.toString(),
+          refundedAmount: refunded.toString(),
+          netPaidAmount: netPaid.toString(),
+          outstandingAmount: Prisma.Decimal.max(value.totalAmount.minus(netPaid), 0).toString(),
+        };
+      }),
+      query.page,
+      query.limit,
+      total,
+    );
   }
   async find(id: string, actor: RequestUser) {
     const value = await this.prisma.invoice.findFirst({

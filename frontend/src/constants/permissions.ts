@@ -48,6 +48,14 @@ export const PERMISSIONS = {
   settingsRead: "hotel.view",
   settingsUpdate: "hotel.update",
   usersManage: "user.manage",
+  accountingRead: "accounting.view",
+  accountingManage: "accounting.manage",
+  chartOfAccountsRead: "chart_of_accounts.view",
+  chartOfAccountsManage: "chart_of_accounts.manage",
+  journalsRead: "journal.view",
+  journalsPost: "journal.post",
+  journalsReverse: "journal.reverse",
+  financialReportsRead: "financial_reports.view",
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

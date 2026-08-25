@@ -118,6 +118,35 @@ describe('Phase 4 guests, availability, and reservations', () => {
     });
   });
 
+  it('creates a guest and reservation atomically and rolls the guest back when booking fails', async () => {
+    const staff = await token('staff');
+    const reservation = {
+      checkInDate: '2026-11-10',
+      checkOutDate: '2026-11-12',
+      adults: 1,
+      children: 0,
+      roomIds: [seed.room101Id],
+    };
+    const created = await api()
+      .post('/api/v1/reservations/with-guest')
+      .auth(staff, { type: 'bearer' })
+      .send({ ...reservation, guest: { fullName: 'Atomic Guest', phone: '+252611234001' } });
+    expect(created.status).toBe(201);
+    expect(created.body.guest.fullName).toBe('Atomic Guest');
+
+    const rejected = await api()
+      .post('/api/v1/reservations/with-guest')
+      .auth(staff, { type: 'bearer' })
+      .send({ ...reservation, guest: { fullName: 'Rolled Back Guest', phone: '+252611234002' } });
+    expect(rejected.status).toBe(409);
+    expect(rejected.body.code).toBe('ROOM_ALREADY_BOOKED');
+    const orphan = await pool.query<{ count: string }>(
+      `SELECT count(*) FROM "Guest" WHERE "hotelId" = $1 AND "fullName" = 'Rolled Back Guest'`,
+      [seed.hotelId],
+    );
+    expect(orphan.rows[0].count).toBe('0');
+  });
+
   it('snapshots automatic prices and prevents STAFF from applying discounts', async () => {
     const staff = await token('staff');
     const reservation = await createReservation(staff, [seed.room101Id]);
@@ -132,6 +161,7 @@ describe('Phase 4 guests, availability, and reservations', () => {
       .get(`/api/v1/reservations/${String(reservation.body.id)}`)
       .auth(staff, { type: 'bearer' });
     expect(unchanged.body.rooms[0].nightlyRate).toBe('100');
+    expect(unchanged.body.rooms[0].room.roomType.isActive).toBe(true);
 
     const deniedDiscount = await api()
       .patch(`/api/v1/reservations/${String(reservation.body.id)}/discount`)

@@ -3,12 +3,12 @@ import { cn } from "@/lib/utils";
 import type { TimelineRoom } from "@/types/timeline";
 
 const bookingStyles = {
-  pending: "border-amber-200 bg-amber-50 text-amber-800",
-  confirmed: "border-violet-200 bg-violet-50 text-violet-800",
-  checked_in: "border-emerald-200 bg-emerald-50 text-emerald-800",
-  checked_out: "border-slate-200 bg-slate-50 text-slate-700",
-  cancelled: "border-rose-200 bg-rose-50 text-rose-800",
-  no_show: "border-red-300 bg-red-50 text-red-900",
+  pending: "border-status-pending/30 bg-status-pending/10 text-status-pending",
+  confirmed: "border-status-reserved/30 bg-status-reserved/10 text-status-reserved",
+  checked_in: "border-status-available/30 bg-status-available/10 text-status-available",
+  checked_out: "border-outline-variant bg-surface-container text-on-surface-variant",
+  cancelled: "border-status-failed/30 bg-status-failed/10 text-status-failed",
+  no_show: "border-status-failed/30 bg-status-failed/10 text-status-failed",
 };
 
 export function ReservationTimeline({
@@ -118,15 +118,15 @@ export function ReservationTimeline({
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t px-4 py-3 text-[11px] text-muted-foreground">
           <span className="font-medium text-foreground">Status:</span>
           <span className="flex items-center gap-1.5">
-            <span className="size-2 rounded-full bg-emerald-500" />
+            <span className="size-2 rounded-full bg-status-available" />
             Checked in
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="size-2 rounded-full bg-violet-500" />
+            <span className="size-2 rounded-full bg-status-reserved" />
             Confirmed
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="size-2 rounded-full bg-amber-500" />
+            <span className="size-2 rounded-full bg-status-pending" />
             Pending
           </span>
         </div>

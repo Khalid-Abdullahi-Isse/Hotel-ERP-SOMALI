@@ -1,11 +1,10 @@
 export type CurrencyCode = "USD" | "SOS";
-export type PaymentMethod = "cash" | "bank" | "mobile_money";
 export type TransactionStatus = "completed" | "pending" | "failed" | "refunded";
 
 export interface FinanceMetric { label: string; value: number; currency: CurrencyCode; detail: string; tone?: "default" | "success" | "warning" }
 export interface PaymentRecord {
   id: string; reference: string; date: string; guestName: string; bookingId: string;
-  method: PaymentMethod; amount: number; currency: CurrencyCode; status: TransactionStatus;
+  method: string; amount: number; currency: CurrencyCode; status: TransactionStatus;
 }
 export interface ExpenseRecord {
   id: string; reference: string; date: string; category: string; vendor: string;

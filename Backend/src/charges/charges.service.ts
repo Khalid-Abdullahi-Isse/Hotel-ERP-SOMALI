@@ -4,6 +4,8 @@ import { ChargeType, ReservationStatus } from '../generated/prisma/enums.js';
 import { AuditLogsService } from '../audit-logs/audit-logs.service.js';
 import type { RequestUser } from '../auth/auth.types.js';
 import { runSerializable } from '../common/database/serializable-transaction.js';
+import { paginatedResponse, paginationOffset } from '../common/pagination/pagination.util.js';
+import type { PaginationQueryDto } from '../common/pagination/pagination-query.dto.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type { AddServiceChargeDto } from './dto/add-service-charge.dto.js';
 import type { VoidChargeDto } from './dto/void-charge.dto.js';
@@ -80,17 +82,22 @@ export class ChargesService {
     });
   }
 
-  async list(reservationId: string, actor: RequestUser) {
+  async list(reservationId: string, query: PaginationQueryDto, actor: RequestUser) {
     await this.assertHotelReservation(reservationId, actor.hotelId);
-    const charges = await this.prisma.charge.findMany({
-      where: { reservationId },
-      include: {
-        service: { select: { id: true, name: true } },
-        voidedBy: { select: { id: true, fullName: true } },
-      },
-      orderBy: [{ chargeDate: 'asc' }, { id: 'asc' }],
-    });
-    return charges.map((charge) => this.chargeView(charge));
+    const [charges, total] = await this.prisma.$transaction([
+      this.prisma.charge.findMany({
+        where: { reservationId },
+        include: {
+          service: { select: { id: true, name: true } },
+          voidedBy: { select: { id: true, fullName: true } },
+        },
+        orderBy: [{ chargeDate: 'asc' }, { id: 'asc' }],
+        skip: paginationOffset(query.page, query.limit),
+        take: query.limit,
+      }),
+      this.prisma.charge.count({ where: { reservationId } }),
+    ]);
+    return paginatedResponse(charges.map((charge) => this.chargeView(charge)), query.page, query.limit, total);
   }
 
   async folio(reservationId: string, actor: RequestUser) {

@@ -1,6 +1,6 @@
 export const queryKeys = {
-  availability: (checkIn: string, checkOut: string, roomTypeId: string, adults: number, children: number) =>
-    ["availability", checkIn, checkOut, roomTypeId, adults, children] as const,
+  availability: (checkIn: string, checkOut: string, roomTypeId: string, adults: number, children: number, readyOnly = false) =>
+    ["availability", checkIn, checkOut, roomTypeId, adults, children, readyOnly] as const,
   reservations: { all: ["reservations"] as const, detail: (id: string) => ["reservations", id] as const },
   rooms: { all: ["rooms"] as const, detail: (id: string) => ["rooms", id] as const },
   guests: { all: ["guests"] as const, detail: (id: string) => ["guests", id] as const },

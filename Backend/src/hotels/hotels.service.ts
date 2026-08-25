@@ -37,6 +37,17 @@ export class HotelsService {
     return hotel;
   }
 
+  async context(actor: RequestUser) {
+    const hotel = await this.prisma.hotel.findUnique({
+      where: { id: actor.hotelId },
+      select: { id: true, name: true, currencyCode: true, timezone: true },
+    });
+    if (!hotel) {
+      throw new NotFoundException({ code: 'HOTEL_NOT_FOUND', message: 'Hotel was not found.' });
+    }
+    return hotel;
+  }
+
   async update(dto: UpdateHotelDto, actor: RequestUser) {
     const before = await this.current(actor);
     return this.prisma.$transaction(async (transaction) => {

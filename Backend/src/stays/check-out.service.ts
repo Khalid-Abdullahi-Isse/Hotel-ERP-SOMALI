@@ -1,6 +1,11 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '../generated/prisma/client.js';
-import { ReservationStatus, RoomStatus } from '../generated/prisma/enums.js';
+import {
+  PaymentKind,
+  PaymentStatus,
+  ReservationStatus,
+  RoomStatus,
+} from '../generated/prisma/enums.js';
 import { AuditLogsService } from '../audit-logs/audit-logs.service.js';
 import type { RequestUser } from '../auth/auth.types.js';
 import { ChargesService } from '../charges/charges.service.js';
@@ -73,6 +78,33 @@ export class CheckOutService {
         throw new ConflictException({
           code: 'DISCOUNT_EXCEEDS_SUBTOTAL',
           message: 'Reduce the reservation discount before checkout.',
+        });
+      }
+      const paymentTotals = await transaction.payment.groupBy({
+        by: ['kind'],
+        where: { reservationId: id, status: PaymentStatus.COMPLETED },
+        _sum: { amount: true },
+      });
+      const paid =
+        paymentTotals.find((entry) => entry.kind === PaymentKind.PAYMENT)?._sum.amount ??
+        new Prisma.Decimal(0);
+      const refunded =
+        paymentTotals.find((entry) => entry.kind === PaymentKind.REFUND)?._sum.amount ??
+        new Prisma.Decimal(0);
+      const netPaid = paid.minus(refunded);
+      const outstanding = Prisma.Decimal.max(
+        new Prisma.Decimal(provisionalFolio.total).minus(netPaid),
+        0,
+      );
+      if (outstanding.gt(0)) {
+        throw new ConflictException({
+          code: 'OUTSTANDING_BALANCE',
+          message: 'Settle the outstanding balance before checkout.',
+          details: {
+            totalAmount: provisionalFolio.total,
+            netPaidAmount: netPaid.toString(),
+            outstandingAmount: outstanding.toString(),
+          },
         });
       }
 

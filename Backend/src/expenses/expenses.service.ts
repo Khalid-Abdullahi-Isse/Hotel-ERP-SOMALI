@@ -4,9 +4,11 @@ import { AuditLogsService } from '../audit-logs/audit-logs.service.js';
 import { PERMISSIONS } from '../auth/auth.constants.js';
 import type { RequestUser } from '../auth/auth.types.js';
 import { runSerializable } from '../common/database/serializable-transaction.js';
+import { paginatedResponse, paginationOffset } from '../common/pagination/pagination.util.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type { CreateExpenseDto } from './dto/create-expense.dto.js';
 import type { ExpenseCategoryDto } from './dto/expense-category.dto.js';
+import type { ListExpensesQueryDto } from './dto/list-expenses-query.dto.js';
 const INCLUDE = {
   hotel: { select: { currencyCode: true } },
   category: { select: { id: true, name: true } },
@@ -125,13 +127,38 @@ export class ExpensesService {
       return { idempotentReplay: false, expense: this.view(expense) };
     });
   }
-  async list(actor: RequestUser) {
-    const values = await this.prisma.expense.findMany({
-      where: { hotelId: actor.hotelId },
-      include: INCLUDE,
-      orderBy: [{ expenseDate: 'desc' }, { createdAt: 'desc' }],
-    });
-    return values.map((v) => this.view(v));
+  async list(query: ListExpensesQueryDto, actor: RequestUser) {
+    const search = query.search?.trim();
+    const where: Prisma.ExpenseWhereInput = {
+      hotelId: actor.hotelId,
+      ...(query.categoryId ? { categoryId: query.categoryId } : {}),
+      ...(query.reversed === 'true'
+        ? { reversedAt: { not: null } }
+        : query.reversed === 'false'
+          ? { reversedAt: null }
+          : {}),
+      ...(search
+        ? {
+            OR: [
+              { reference: { contains: search, mode: 'insensitive' } },
+              { description: { contains: search, mode: 'insensitive' } },
+              { category: { name: { contains: search, mode: 'insensitive' } } },
+              { createdBy: { fullName: { contains: search, mode: 'insensitive' } } },
+            ],
+          }
+        : {}),
+    };
+    const [values, total] = await this.prisma.$transaction([
+      this.prisma.expense.findMany({
+        where,
+        include: INCLUDE,
+        orderBy: [{ expenseDate: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
+        skip: paginationOffset(query.page, query.limit),
+        take: query.limit,
+      }),
+      this.prisma.expense.count({ where }),
+    ]);
+    return paginatedResponse(values.map((v) => this.view(v)), query.page, query.limit, total);
   }
   async find(id: string, actor: RequestUser) {
     const value = await this.prisma.expense.findFirst({
