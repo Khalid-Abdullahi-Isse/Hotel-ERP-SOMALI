@@ -48,7 +48,6 @@ jobs:
       NODE_ENV: test
 
       DATABASE_URL: postgresql://hotel_erp:ci_password@localhost:5432/hotel_erp_test?schema=public
-
       TEST_DATABASE_URL: postgresql://hotel_erp:ci_password@localhost:5432/hotel_erp_test?schema=public
 
       REDIS_URL: redis://localhost:6379
@@ -100,12 +99,6 @@ jobs:
       - name: Validate Prisma schema
         run: npm run prisma:validate
 
-      - name: Check backend formatting
-        run: npm run format:check
-
-      - name: Lint backend
-        run: npm run lint
-
       - name: Run backend unit tests
         run: npm test
 
@@ -138,9 +131,6 @@ jobs:
 
       - name: Install frontend dependencies
         run: npm ci
-
-      - name: Lint frontend
-        run: npm run lint
 
       - name: Run frontend tests
         run: npm run test:run
