@@ -35,6 +35,13 @@ export function BalanceTable({
           </TableRow>
         </TableHeader>
         <TableBody>
+          {rows.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={3} className="h-28 text-center text-muted-foreground">
+                No balances in this section for the selected period.
+              </TableCell>
+            </TableRow>
+          ) : null}
           {rows.map((row) => (
             <TableRow key={row.accountId}>
               <TableCell className="font-mono font-medium">

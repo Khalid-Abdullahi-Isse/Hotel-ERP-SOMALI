@@ -61,6 +61,9 @@ export default async function GeneralLedgerPage({
             </TableRow>
           </TableHeader>
           <TableBody>
+            {ledger.data.length === 0 ? (
+              <TableRow><TableCell colSpan={7} className="h-32 text-center text-muted-foreground">No posted ledger lines match this period and search.</TableCell></TableRow>
+            ) : null}
             {ledger.data.map((row) => (
               <TableRow key={row.id}>
                 <TableCell>{row.businessDate}</TableCell>

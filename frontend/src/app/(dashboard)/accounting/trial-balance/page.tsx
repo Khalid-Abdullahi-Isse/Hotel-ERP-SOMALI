@@ -57,6 +57,9 @@ export default async function TrialBalancePage({
             </TableRow>
           </TableHeader>
           <TableBody>
+            {report.data.length === 0 ? (
+              <TableRow><TableCell colSpan={6} className="h-32 text-center text-muted-foreground">No posted account activity is available for this period.</TableCell></TableRow>
+            ) : null}
             {report.data.map((row) => (
               <TableRow key={row.accountId}>
                 <TableCell className="font-mono font-medium">

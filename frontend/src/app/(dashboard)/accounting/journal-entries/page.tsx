@@ -60,6 +60,9 @@ export default async function JournalEntriesPage({
             </TableRow>
           </TableHeader>
           <TableBody>
+            {entries.data.length === 0 ? (
+              <TableRow><TableCell colSpan={7} className="h-32 text-center text-muted-foreground">No journal entries match the current filters.</TableCell></TableRow>
+            ) : null}
             {entries.data.map((entry) => (
               <TableRow key={entry.id}>
                 <TableCell className="font-mono font-medium text-primary">
