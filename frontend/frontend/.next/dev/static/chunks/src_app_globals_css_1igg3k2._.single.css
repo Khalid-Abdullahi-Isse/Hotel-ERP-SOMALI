@@ -956,6 +956,10 @@
     height: calc(var(--spacing) * 80);
   }
 
+  .h-96 {
+    height: calc(var(--spacing) * 96);
+  }
+
   .h-\[28rem\] {
     height: 28rem;
   }
@@ -1042,6 +1046,10 @@
 
   .min-h-40 {
     min-height: calc(var(--spacing) * 40);
+  }
+
+  .min-h-48 {
+    min-height: calc(var(--spacing) * 48);
   }
 
   .min-h-72 {
@@ -2972,6 +2980,10 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
+  .accent-primary {
+    accent-color: var(--primary);
+  }
+
   .opacity-0 {
     opacity: 0;
   }
@@ -4287,6 +4299,10 @@
       grid-template-columns: minmax(0, 1.35fr) minmax(300px, .65fr);
     }
 
+    .lg\:grid-cols-\[minmax\(220px\,1\.4fr\)_minmax\(180px\,1fr\)_140px_140px_36px\] {
+      grid-template-columns: minmax(220px, 1.4fr) minmax(180px, 1fr) 140px 140px 36px;
+    }
+
     .lg\:grid-cols-\[var\(--sidebar-width\)_1fr\] {
       grid-template-columns: var(--sidebar-width) 1fr;
     }
@@ -4359,6 +4375,10 @@
 
     .xl\:grid-cols-\[minmax\(0\,1fr\)_360px\] {
       grid-template-columns: minmax(0, 1fr) 360px;
+    }
+
+    .xl\:grid-cols-\[minmax\(0\,1fr\)_380px\] {
+      grid-template-columns: minmax(0, 1fr) 380px;
     }
 
     .xl\:self-start {

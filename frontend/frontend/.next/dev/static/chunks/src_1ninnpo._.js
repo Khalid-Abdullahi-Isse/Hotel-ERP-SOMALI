@@ -602,7 +602,12 @@ const sidebarSections = [
                 label: "Accounting",
                 href: "/accounting",
                 icon: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$circle$2d$dollar$2d$sign$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__CircleDollarSign$3e$__["CircleDollarSign"],
-                permission: __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$constants$2f$permissions$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["PERMISSIONS"].financialReportsRead
+                permissions: [
+                    __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$constants$2f$permissions$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["PERMISSIONS"].accountingRead,
+                    __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$constants$2f$permissions$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["PERMISSIONS"].chartOfAccountsRead,
+                    __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$constants$2f$permissions$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["PERMISSIONS"].journalsRead,
+                    __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$constants$2f$permissions$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["PERMISSIONS"].financialReportsRead
+                ]
             },
             {
                 label: "Payments",
@@ -621,6 +626,12 @@ const sidebarSections = [
                 href: "/expenses",
                 icon: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$receipt$2d$text$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__ReceiptText$3e$__["ReceiptText"],
                 permission: __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$constants$2f$permissions$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["PERMISSIONS"].expensesRead
+            },
+            {
+                label: "Expense Categories",
+                href: "/expense-categories",
+                icon: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$tags$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Tags$3e$__["Tags"],
+                permission: __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$constants$2f$permissions$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["PERMISSIONS"].expenseCategoriesManage
             }
         ]
     },
