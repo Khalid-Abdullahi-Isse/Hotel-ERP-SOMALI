@@ -1,10 +1,12 @@
 import "server-only";
 
 import { serverApi } from "@/lib/server-api";
-import type { ApiExpense, ApiPage, ApiPayment } from "@/types/api-contracts";
+import type { ApiExpense, ApiExpenseCategory, ApiPage, ApiPayment } from "@/types/api-contracts";
 import type { PaginatedResponse } from "@/types/api";
 import type { CurrencyCode, ExpenseRecord, PaymentRecord } from "@/types/finance";
 import { listQuery } from "@/lib/pagination";
+
+export const getExpenseCategories = () => serverApi<ApiExpenseCategory[]>("/expense-categories");
 
 export async function getPayments(params: { page?: number; search?: string; status?: string } = {}): Promise<PaginatedResponse<PaymentRecord>> {
   const response = await serverApi<ApiPage<ApiPayment>>(`/payments?${listQuery({ ...params, status: params.status?.toUpperCase() })}`);

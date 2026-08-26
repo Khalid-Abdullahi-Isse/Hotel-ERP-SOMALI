@@ -2,9 +2,9 @@
 
 ## Implemented scope
 
-The current release is the accounting foundation. It adds a hotel-scoped chart of accounts, journals, immutable double-entry entries, configurable mappings, a central posting service, and ledger-derived General Ledger, Trial Balance, Profit and Loss, and Balance Sheet APIs.
+The current release includes a hotel-scoped chart of accounts, journals, immutable double-entry entries, configurable mappings, a central posting service, and ledger-derived General Ledger, Trial Balance, Profit and Loss, and Balance Sheet APIs.
 
-Operational `Charge`, `Payment`, `Invoice`, and `Expense` records are not yet auto-posted. This is intentional: existing records predate the ledger and require an approved opening-balance and cutover policy before event integration.
+After accounting settings are initialized for a hotel, room and service charges, guest payments and deposits, refunds, expense records, charge voids, and expense reversals post automatically inside the same transaction as the operational event. Existing records still require an approved opening-balance and cutover policy; initialization never silently backfills history.
 
 ## Boundaries
 
@@ -33,4 +33,4 @@ Entry numbers use a locked hotel/year sequence and have the form `JE-2026-000001
 
 ## Next boundary
 
-Phase 2 should emit accounting events from charges, deposits, payments, discounts, refunds, expenses, and checkout. Event handlers must call `AccountingPostingService.postEvent` inside the operational transaction and use the unique `(hotelId, sourceType, sourceId)` key.
+The next accounting boundary is discount/adjustment posting followed by business-date room-night posting and Night Audit. Night Audit must not be exposed until daily posting completeness, reconciliation, date locking, and idempotent reruns are implemented.

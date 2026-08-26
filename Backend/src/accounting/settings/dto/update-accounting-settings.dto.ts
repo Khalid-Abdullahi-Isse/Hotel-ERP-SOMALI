@@ -11,5 +11,6 @@ export class UpdateAccountingSettingsDto {
   @IsOptional() @IsUUID('4') defaultServiceRevenueAccountId?: string;
   @IsOptional() @IsUUID('4') defaultDiscountAccountId?: string;
   @IsOptional() @IsUUID('4') defaultExpenseAccountId?: string;
+  @IsOptional() @IsUUID('4') defaultAccountsPayableAccountId?: string;
   @IsOptional() @IsIn(['CONTRA_REVENUE', 'REDUCE_REVENUE']) discountPostingMode?: string;
 }

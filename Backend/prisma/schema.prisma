@@ -680,6 +680,7 @@ model Account {
   settingsServiceRevenue  AccountingSettings[] @relation("SettingsServiceRevenue")
   settingsDiscount        AccountingSettings[] @relation("SettingsDiscount")
   settingsExpense         AccountingSettings[] @relation("SettingsExpense")
+  settingsAccountsPayable AccountingSettings[] @relation("SettingsAccountsPayable")
 
   @@unique([hotelId, code])
   @@index([hotelId, type, isActive])
@@ -775,6 +776,7 @@ model AccountingSettings {
   defaultServiceRevenueAccountId  String   @db.Uuid
   defaultDiscountAccountId        String   @db.Uuid
   defaultExpenseAccountId         String   @db.Uuid
+  defaultAccountsPayableAccountId String   @db.Uuid
   baseCurrency                    String   @db.Char(3)
   discountPostingMode             String   @default("CONTRA_REVENUE") @db.VarChar(32)
   createdAt                       DateTime @default(now()) @db.Timestamptz(3)
@@ -790,6 +792,7 @@ model AccountingSettings {
   defaultServiceRevenueAccount    Account  @relation("SettingsServiceRevenue", fields: [defaultServiceRevenueAccountId], references: [id], onDelete: Restrict)
   defaultDiscountAccount          Account  @relation("SettingsDiscount", fields: [defaultDiscountAccountId], references: [id], onDelete: Restrict)
   defaultExpenseAccount           Account  @relation("SettingsExpense", fields: [defaultExpenseAccountId], references: [id], onDelete: Restrict)
+  defaultAccountsPayableAccount   Account  @relation("SettingsAccountsPayable", fields: [defaultAccountsPayableAccountId], references: [id], onDelete: Restrict)
 }
 
 model AccountingSequence {

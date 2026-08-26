@@ -5,8 +5,10 @@ import type {
   AccountingAccount,
   AccountingJournal,
   AccountingPage,
+  AccountingSettings,
   BalanceRow,
   JournalEntrySummary,
+  JournalEntryDetail,
   LedgerRow,
   ReportMetadata,
   TrialBalanceRow,
@@ -20,8 +22,12 @@ function queryString(values: Record<string, string | number | undefined>) {
   return query.toString();
 }
 
+export function getJournalEntry(id: string) {
+  return serverApi<JournalEntryDetail>(`/accounting/journal-entries/${id}`);
+}
+
 export function getAccountingAccounts(
-  values: { page?: number; search?: string; type?: string } = {},
+  values: { page?: number; limit?: number; search?: string; type?: string; isActive?: string } = {},
 ) {
   return serverApi<AccountingPage<AccountingAccount>>(
     `/accounting/accounts?${queryString(values)}`,
@@ -29,11 +35,21 @@ export function getAccountingAccounts(
 }
 
 export function getAccountingJournals(
-  values: { page?: number; search?: string } = {},
+  values: { page?: number; limit?: number; search?: string; isActive?: string } = {},
 ) {
   return serverApi<AccountingPage<AccountingJournal>>(
     `/accounting/journals?${queryString(values)}`,
   );
+}
+
+export async function getAccountingSettings() {
+  try {
+    return await serverApi<AccountingSettings>("/accounting/settings");
+  } catch (error) {
+    const { ApiError } = await import("@/lib/api-error");
+    if (error instanceof ApiError && error.status === 404) return null;
+    throw error;
+  }
 }
 
 export function getJournalEntries(

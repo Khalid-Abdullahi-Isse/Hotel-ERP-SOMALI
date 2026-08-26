@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import { Plus } from "lucide-react";
 import { AccountingNav } from "@/components/accounting/accounting-nav";
 import { ListToolbar } from "@/components/shared/list-toolbar";
 import { PageHeader } from "@/components/shared/page-header";
 import { Pagination } from "@/components/shared/pagination";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
   Table,
@@ -33,6 +36,7 @@ export default async function JournalEntriesPage({
       <PageHeader
         title="Journal Entries"
         description="Immutable posted entries, drafts, and linked reversals."
+        actions={<Button asChild><Link href="/accounting/journal-entries/new"><Plus />New entry</Link></Button>}
       />
       <AccountingNav />
       <Card className="py-0">
@@ -59,8 +63,8 @@ export default async function JournalEntriesPage({
           <TableBody>
             {entries.data.map((entry) => (
               <TableRow key={entry.id}>
-                <TableCell className="font-mono font-medium">
-                  {entry.entryNumber}
+                <TableCell className="font-mono font-medium text-primary">
+                  <Link href={`/accounting/journal-entries/${entry.id}`} className="hover:underline">{entry.entryNumber}</Link>
                 </TableCell>
                 <TableCell>{entry.businessDate.slice(0, 10)}</TableCell>
                 <TableCell>{entry.journal.code}</TableCell>

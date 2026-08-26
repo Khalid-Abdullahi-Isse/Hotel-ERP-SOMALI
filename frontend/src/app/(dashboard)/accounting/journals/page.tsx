@@ -1,20 +1,14 @@
 import type { Metadata } from "next";
 import { AccountingNav } from "@/components/accounting/accounting-nav";
+import { JournalManager } from "@/components/accounting/journal-manager";
 import { ListToolbar } from "@/components/shared/list-toolbar";
 import { PageHeader } from "@/components/shared/page-header";
 import { Pagination } from "@/components/shared/pagination";
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { PERMISSIONS } from "@/constants/permissions";
 import { parsePage } from "@/lib/pagination";
+import { can } from "@/lib/permissions";
 import { getAccountingJournals } from "@/services/accounting.server";
+import { getCurrentUser } from "@/services/auth.server";
 
 export const metadata: Metadata = { title: "Accounting Journals" };
 export default async function JournalsPage({
@@ -23,10 +17,7 @@ export default async function JournalsPage({
   searchParams: Promise<{ page?: string; search?: string }>;
 }) {
   const params = await searchParams;
-  const journals = await getAccountingJournals({
-    page: parsePage(params.page),
-    search: params.search,
-  });
+  const [journals, user] = await Promise.all([getAccountingJournals({ page: parsePage(params.page), search: params.search }), getCurrentUser()]);
   return (
     <div className="space-y-6">
       <PageHeader
@@ -34,42 +25,11 @@ export default async function JournalsPage({
         description="Controlled books for sales, cash, bank, adjustments, and night audit."
       />
       <AccountingNav />
-      <Card className="py-0">
-        <ListToolbar placeholder="Search journal code or name" />
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Code</TableHead>
-              <TableHead>Journal</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Entries</TableHead>
-              <TableHead>Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {journals.data.map((journal) => (
-              <TableRow key={journal.id}>
-                <TableCell className="font-mono font-medium">
-                  {journal.code}
-                </TableCell>
-                <TableCell className="font-medium">{journal.name}</TableCell>
-                <TableCell>{journal.type.replaceAll("_", " ")}</TableCell>
-                <TableCell>{journal._count.entries.toLocaleString()}</TableCell>
-                <TableCell>
-                  <Badge variant={journal.isActive ? "secondary" : "outline"}>
-                    {journal.isActive ? "Active" : "Inactive"}
-                  </Badge>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-        <Pagination
+      <JournalManager journals={journals.data} canManage={Boolean(user && can(user, PERMISSIONS.accountingManage))} toolbar={<ListToolbar placeholder="Search journal code or name" />} pagination={<Pagination
           {...journals.pagination}
           itemLabel="journals"
           searchParams={{ search: params.search }}
-        />
-      </Card>
+        />} />
     </div>
   );
 }

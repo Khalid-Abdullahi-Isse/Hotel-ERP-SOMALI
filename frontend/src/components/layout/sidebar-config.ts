@@ -157,7 +157,12 @@ export const sidebarSections: SidebarNavSection[] = [
         label: "Accounting",
         href: "/accounting",
         icon: CircleDollarSign,
-        permission: PERMISSIONS.financialReportsRead,
+        permissions: [
+          PERMISSIONS.accountingRead,
+          PERMISSIONS.chartOfAccountsRead,
+          PERMISSIONS.journalsRead,
+          PERMISSIONS.financialReportsRead,
+        ],
       },
       {
         label: "Payments",
@@ -176,6 +181,12 @@ export const sidebarSections: SidebarNavSection[] = [
         href: "/expenses",
         icon: ReceiptText,
         permission: PERMISSIONS.expensesRead,
+      },
+      {
+        label: "Expense Categories",
+        href: "/expense-categories",
+        icon: Tags,
+        permission: PERMISSIONS.expenseCategoriesManage,
       },
     ],
   },

@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { getApiError } from "@/lib/api-error";
@@ -23,12 +24,13 @@ import {
   type ServiceInput,
 } from "@/services/catalog.service";
 import type { ApiFloor, ApiPaymentMethod, ApiRoomType, ApiService } from "@/types/api-contracts";
+import type { AccountingAccount } from "@/types/accounting";
 
 type CatalogProps =
   | { kind: "floors"; items: ApiFloor[]; canManage: boolean }
   | { kind: "room-types"; items: ApiRoomType[]; canManage: boolean }
   | { kind: "services"; items: ApiService[]; canManage: boolean }
-  | { kind: "payment-methods"; items: ApiPaymentMethod[]; canManage: boolean };
+  | { kind: "payment-methods"; items: ApiPaymentMethod[]; canManage: boolean; ledgerAccounts: AccountingAccount[] };
 
 export function CatalogManager(props: CatalogProps) {
   const router = useRouter();
@@ -75,8 +77,10 @@ export function CatalogManager(props: CatalogProps) {
 
       {showForm ? (
         <CatalogForm
+          key={`${props.kind}-${editItem?.id ?? "new"}`}
           kind={props.kind}
           item={editItem}
+          ledgerAccounts={props.kind === "payment-methods" ? props.ledgerAccounts : []}
           pending={mutation.isPending}
           error={mutation.error}
           onCancel={cancel}
@@ -115,7 +119,7 @@ function CatalogTable({ props, pending, onEdit, onToggle, onDelete }: {
             {props.kind === "floors" ? <FloorCells item={item as ApiFloor} /> : null}
             {props.kind === "room-types" ? <RoomTypeCells item={item as ApiRoomType} /> : null}
             {props.kind === "services" ? <ServiceCells item={item as ApiService} /> : null}
-            {props.kind === "payment-methods" ? <PaymentMethodCells item={item as ApiPaymentMethod} /> : null}
+            {props.kind === "payment-methods" ? <PaymentMethodCells item={item as ApiPaymentMethod} accounts={props.ledgerAccounts} /> : null}
             <TableCell><div className="flex justify-end gap-1">
               {props.canManage ? <Button variant="ghost" size="icon-sm" onClick={() => onEdit(item.id)} aria-label="Edit"><Pencil /></Button> : null}
               {props.canManage && props.kind === "floors" ? (
@@ -145,19 +149,22 @@ function RoomTypeCells({ item }: { item: ApiRoomType }) {
 function ServiceCells({ item }: { item: ApiService }) {
   return <><TableCell><p className="font-medium">{item.name}</p><p className="max-w-md truncate text-xs text-muted-foreground">{item.description || "No description"}</p></TableCell><TableCell className="font-mono">{item.defaultPrice}</TableCell><TableCell><ActiveBadge active={item.isActive} /></TableCell></>;
 }
-function PaymentMethodCells({ item }: { item: ApiPaymentMethod }) {
-  return <><TableCell className="font-medium">{item.name}</TableCell><TableCell><ActiveBadge active={item.isActive} /></TableCell></>;
+function PaymentMethodCells({ item, accounts }: { item: ApiPaymentMethod; accounts: AccountingAccount[] }) {
+  const account = accounts.find((candidate) => candidate.id === item.ledgerAccountId);
+  return <><TableCell><p className="font-medium">{item.name}</p><p className="text-xs text-muted-foreground">{account ? `${account.code} · ${account.name}` : "Uses accounting default"}</p></TableCell><TableCell><ActiveBadge active={item.isActive} /></TableCell></>;
 }
 function ActiveBadge({ active }: { active: boolean }) { return <Badge variant={active ? "default" : "secondary"}>{active ? "Active" : "Inactive"}</Badge>; }
 
-function CatalogForm({ kind, item, pending, error, onCancel, onSubmit }: {
+function CatalogForm({ kind, item, ledgerAccounts, pending, error, onCancel, onSubmit }: {
   kind: CatalogProps["kind"]; item?: CatalogProps["items"][number]; pending: boolean; error: unknown;
+  ledgerAccounts: AccountingAccount[];
   onCancel: () => void; onSubmit: (operation: () => Promise<unknown>) => void;
 }) {
   const floor = kind === "floors" ? item as ApiFloor | undefined : undefined;
   const roomType = kind === "room-types" ? item as ApiRoomType | undefined : undefined;
   const service = kind === "services" ? item as ApiService | undefined : undefined;
   const method = kind === "payment-methods" ? item as ApiPaymentMethod | undefined : undefined;
+  const [ledgerAccountId, setLedgerAccountId] = useState(method?.ledgerAccountId ?? "default");
   return (
     <Card>
       <CardHeader><CardTitle>{item ? "Edit" : "Add"} {singular(kind)}</CardTitle></CardHeader>
@@ -182,7 +189,7 @@ function CatalogForm({ kind, item, pending, error, onCancel, onSubmit }: {
             <div className="space-y-2"><Label htmlFor="description">Description</Label><Textarea id="description" name="description" defaultValue={service?.description ?? ""} rows={3} /></div>
             <Field label="Default price" name="defaultPrice" inputMode="decimal" required defaultValue={service?.defaultPrice ?? ""} placeholder="25.00" />
           </> : null}
-          {method !== undefined || kind === "payment-methods" ? <Field label="Method name" name="name" required defaultValue={method?.name ?? ""} placeholder="e.g. Cash" /> : null}
+          {method !== undefined || kind === "payment-methods" ? <><Field label="Method name" name="name" required defaultValue={method?.name ?? ""} placeholder="e.g. Cash" /><div className="space-y-2"><Label htmlFor="ledgerAccountId">Settlement account</Label><Select value={ledgerAccountId} onValueChange={setLedgerAccountId}><SelectTrigger id="ledgerAccountId" className="w-full"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="default">Use accounting default</SelectItem>{ledgerAccounts.map((account) => <SelectItem key={account.id} value={account.id}>{account.code} · {account.name}</SelectItem>)}</SelectContent></Select><input type="hidden" name="ledgerAccountId" value={ledgerAccountId} /><p className="text-xs leading-5 text-muted-foreground">Asset account debited when this method receives payment.</p></div></> : null}
           <div className="flex justify-end gap-2 border-t pt-4"><Button type="button" variant="outline" onClick={onCancel} disabled={pending}>Cancel</Button><Button type="submit" disabled={pending}>{pending ? <LoaderCircle className="animate-spin" /> : <Check />}{pending ? "Saving..." : "Save"}</Button></div>
         </form>
       </CardContent>
@@ -209,7 +216,8 @@ function submitResource(kind: CatalogProps["kind"], id: string | undefined, data
     const input: ServiceInput = { name: text("name"), description: text("description") || undefined, defaultPrice: text("defaultPrice") };
     return id ? serviceCatalogService.update(id, input) : serviceCatalogService.create(input);
   }
-  return id ? paymentMethodService.update(id, text("name")) : paymentMethodService.create(text("name"));
+  const input = { name: text("name"), ...(text("ledgerAccountId") === "default" ? {} : { ledgerAccountId: text("ledgerAccountId") }) };
+  return id ? paymentMethodService.update(id, input) : paymentMethodService.create(input);
 }
 
 function toggleResource(kind: CatalogProps["kind"], id: string, active: boolean) {

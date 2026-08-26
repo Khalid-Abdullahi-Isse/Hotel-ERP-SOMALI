@@ -1,9 +1,6 @@
 import type { Metadata } from "next";
-import {
-  AccountingNav,
-  accountingMoney,
-  accountingPeriod,
-} from "@/components/accounting/accounting-nav";
+import { AccountingNav } from "@/components/accounting/accounting-nav";
+import { accountingMoney, accountingPeriod } from "@/lib/accounting";
 import { BalanceTable } from "@/components/accounting/balance-table";
 import { ReportPeriod } from "@/components/accounting/report-period";
 import { PageHeader } from "@/components/shared/page-header";

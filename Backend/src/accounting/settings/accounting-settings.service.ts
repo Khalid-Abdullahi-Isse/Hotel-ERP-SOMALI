@@ -18,6 +18,7 @@ const SETTINGS_INCLUDE = {
   defaultServiceRevenueAccount: true,
   defaultDiscountAccount: true,
   defaultExpenseAccount: true,
+  defaultAccountsPayableAccount: true,
 } as const;
 
 const DEFAULT_ACCOUNTS = [
@@ -87,7 +88,18 @@ export class AccountingSettingsService {
         where: { hotelId: actor.hotelId },
         include: SETTINGS_INCLUDE,
       });
-      if (existing) return { initialized: false, settings: existing };
+      if (existing) {
+        await this.mapKnownPaymentMethods(
+          tx,
+          actor.hotelId,
+          new Map([
+            ['1110', existing.defaultCashAccountId],
+            ['1120', existing.defaultBankAccountId],
+            ['1130', existing.defaultMobileMoneyAccountId],
+          ]),
+        );
+        return { initialized: false, settings: existing };
+      }
       const hotel = await tx.hotel.findUniqueOrThrow({
         where: { id: actor.hotelId },
         select: { currencyCode: true },
@@ -133,6 +145,7 @@ export class AccountingSettingsService {
           create: { hotelId: actor.hotelId, code, name, type },
         });
       }
+      await this.mapKnownPaymentMethods(tx, actor.hotelId, accounts);
       const settings = await tx.accountingSettings.create({
         data: {
           hotelId: actor.hotelId,
@@ -147,6 +160,7 @@ export class AccountingSettingsService {
           defaultServiceRevenueAccountId: this.requiredAccount(accounts, '4500'),
           defaultDiscountAccountId: this.requiredAccount(accounts, '4090'),
           defaultExpenseAccountId: this.requiredAccount(accounts, '6900'),
+          defaultAccountsPayableAccountId: this.requiredAccount(accounts, '2100'),
         },
         include: SETTINGS_INCLUDE,
       });
@@ -214,6 +228,7 @@ export class AccountingSettingsService {
       ['defaultServiceRevenueAccountId', AccountType.REVENUE],
       ['defaultDiscountAccountId', AccountType.REVENUE],
       ['defaultExpenseAccountId', AccountType.EXPENSE],
+      ['defaultAccountsPayableAccountId', AccountType.LIABILITY],
     ];
     for (const [field, type] of expectations) {
       const id = value[field];
@@ -237,6 +252,34 @@ export class AccountingSettingsService {
     const id = accounts.get(code);
     if (!id) throw new Error(`Default account ${code} was not created.`);
     return id;
+  }
+
+  private async mapKnownPaymentMethods(
+    tx: Prisma.TransactionClient,
+    hotelId: string,
+    accounts: Map<string, string>,
+  ) {
+    const mappings: Array<[string[], string]> = [
+      [['cash'], this.requiredAccount(accounts, '1110')],
+      [['evc', 'zaad', 'mobile', 'wallet'], this.requiredAccount(accounts, '1130')],
+      [['visa', 'mastercard', 'card', 'bank'], this.requiredAccount(accounts, '1120')],
+    ];
+    const methods = await tx.paymentMethod.findMany({
+      where: { hotelId, ledgerAccountId: null },
+      select: { id: true, name: true },
+    });
+    for (const method of methods) {
+      const normalized = method.name.toLowerCase();
+      const match = mappings.find(([keywords]) =>
+        keywords.some((keyword) => normalized.includes(keyword)),
+      );
+      if (match) {
+        await tx.paymentMethod.update({
+          where: { id: method.id },
+          data: { ledgerAccountId: match[1] },
+        });
+      }
+    }
   }
 
   private notInitialized(): never {

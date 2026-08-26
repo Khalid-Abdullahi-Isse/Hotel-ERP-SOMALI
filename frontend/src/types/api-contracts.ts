@@ -66,6 +66,7 @@ export interface ApiCharge {
 export interface ApiPaymentMethod {
   id: string;
   name: string;
+  ledgerAccountId: string | null;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -97,6 +98,14 @@ export interface ApiExpense {
   hotel: { currencyCode: "USD" | "SOS" };
   paymentMethod: { id: string; name: string } | null;
   createdBy: { id: string; fullName: string };
+}
+export interface ApiExpenseCategory {
+  id: string;
+  name: string;
+  expenseAccountId: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 export interface ApiHousekeepingTask {
   id: string;

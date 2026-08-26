@@ -39,10 +39,10 @@ export const serviceCatalogService = {
 export interface ServiceInput { name: string; description?: string; defaultPrice: string }
 
 export const paymentMethodService = {
-  create: async (name: string) =>
-    (await api.post<ApiPaymentMethod>("/payment-methods", { name })).data,
-  update: async (id: string, name: string) =>
-    (await api.patch<ApiPaymentMethod>(`/payment-methods/${id}`, { name })).data,
+  create: async (input: { name: string; ledgerAccountId?: string }) =>
+    (await api.post<ApiPaymentMethod>("/payment-methods", input)).data,
+  update: async (id: string, input: { name: string; ledgerAccountId?: string }) =>
+    (await api.patch<ApiPaymentMethod>(`/payment-methods/${id}`, input)).data,
   setActive: async (id: string, active: boolean) =>
     (await (active ? api.patch<ApiPaymentMethod>(`/payment-methods/${id}/restore`) : api.delete<ApiPaymentMethod>(`/payment-methods/${id}`))).data,
 };

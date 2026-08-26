@@ -25,6 +25,50 @@ export interface AccountingJournal {
   _count: { entries: number };
 }
 
+export type AccountingJournalType =
+  | "GENERAL"
+  | "SALES"
+  | "CASH"
+  | "BANK"
+  | "MOBILE_MONEY"
+  | "PURCHASE"
+  | "ADJUSTMENT"
+  | "NIGHT_AUDIT";
+
+export interface AccountingSettings {
+  id: string;
+  hotelId: string;
+  baseCurrency: string;
+  discountPostingMode: "CONTRA_REVENUE" | "REDUCE_REVENUE";
+  defaultRoomRevenueAccountId: string;
+  defaultGuestReceivableAccountId: string;
+  defaultCashAccountId: string;
+  defaultBankAccountId: string;
+  defaultMobileMoneyAccountId: string;
+  defaultDepositAccountId: string;
+  defaultTaxPayableAccountId: string;
+  defaultServiceRevenueAccountId: string;
+  defaultDiscountAccountId: string;
+  defaultExpenseAccountId: string;
+  defaultAccountsPayableAccountId: string;
+}
+
+export type AccountingSettingsInput = Pick<
+  AccountingSettings,
+  | "discountPostingMode"
+  | "defaultRoomRevenueAccountId"
+  | "defaultGuestReceivableAccountId"
+  | "defaultCashAccountId"
+  | "defaultBankAccountId"
+  | "defaultMobileMoneyAccountId"
+  | "defaultDepositAccountId"
+  | "defaultTaxPayableAccountId"
+  | "defaultServiceRevenueAccountId"
+  | "defaultDiscountAccountId"
+  | "defaultExpenseAccountId"
+  | "defaultAccountsPayableAccountId"
+>;
+
 export interface JournalEntrySummary {
   id: string;
   entryNumber: string;
@@ -38,6 +82,56 @@ export interface JournalEntrySummary {
   difference: string;
   journal: { id: string; code: string; name: string; type: string };
   postedBy: { id: string; fullName: string } | null;
+}
+
+export interface JournalEntryDetail extends JournalEntrySummary {
+  createdBy: { id: string; fullName: string };
+  reversedBy: { id: string; fullName: string } | null;
+  reversedEntry: { id: string; entryNumber: string } | null;
+  reversalEntry: { id: string; entryNumber: string } | null;
+  reversedAt: string | null;
+  reversalReason: string | null;
+  lines: Array<{
+    id: string;
+    description: string | null;
+    debit: string;
+    credit: string;
+    account: Pick<
+      AccountingAccount,
+      "id" | "code" | "name" | "type" | "normalBalance"
+    >;
+  }>;
+}
+
+export interface AccountInput {
+  code: string;
+  name: string;
+  type: AccountType;
+  subType?: string;
+  normalBalance: "DEBIT" | "CREDIT";
+  parentAccountId?: string;
+  isActive?: boolean;
+  allowManualPosting?: boolean;
+}
+
+export interface JournalInput {
+  code: string;
+  name: string;
+  type: AccountingJournalType;
+  isActive?: boolean;
+}
+
+export interface JournalEntryInput {
+  journalId: string;
+  businessDate: string;
+  reference?: string;
+  description: string;
+  lines: Array<{
+    accountId: string;
+    description?: string;
+    debit: string;
+    credit: string;
+  }>;
 }
 
 export interface ReportMetadata {

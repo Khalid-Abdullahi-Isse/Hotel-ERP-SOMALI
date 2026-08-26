@@ -7,7 +7,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { accountingMoney } from "@/components/accounting/accounting-nav";
+import { accountingMoney } from "@/lib/accounting";
 import type { BalanceRow } from "@/types/accounting";
 
 export function BalanceTable({

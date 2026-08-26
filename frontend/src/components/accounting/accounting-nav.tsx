@@ -1,5 +1,9 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 const links = [
   ["Overview", "/accounting"],
@@ -10,35 +14,21 @@ const links = [
   ["Trial Balance", "/accounting/trial-balance"],
   ["Profit & Loss", "/accounting/profit-loss"],
   ["Balance Sheet", "/accounting/balance-sheet"],
+  ["Setup", "/accounting/settings"],
 ] as const;
 
 export function AccountingNav() {
+  const pathname = usePathname();
   return (
     <nav
       className="flex gap-2 overflow-x-auto pb-1"
       aria-label="Accounting sections"
     >
       {links.map(([label, href]) => (
-        <Button key={href} asChild variant="outline" size="sm">
-          <Link href={href}>{label}</Link>
+        <Button key={href} asChild variant={pathname === href ? "secondary" : "ghost"} size="sm" className={cn("shrink-0", pathname === href && "font-semibold")}>
+          <Link href={href} aria-current={pathname === href ? "page" : undefined}>{label}</Link>
         </Button>
       ))}
     </nav>
   );
-}
-
-export function accountingPeriod() {
-  const now = new Date();
-  const dateTo = now.toISOString().slice(0, 10);
-  const dateFrom = `${dateTo.slice(0, 8)}01`;
-  return { dateFrom, dateTo };
-}
-
-export function accountingMoney(value: string, currency: string) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(Number(value));
 }

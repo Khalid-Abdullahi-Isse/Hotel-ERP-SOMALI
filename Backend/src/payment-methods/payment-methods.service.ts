@@ -1,5 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '../generated/prisma/client.js';
+import { AccountType } from '../generated/prisma/enums.js';
 import { AuditLogsService } from '../audit-logs/audit-logs.service.js';
 import { PERMISSIONS } from '../auth/auth.constants.js';
 import type { RequestUser } from '../auth/auth.types.js';
@@ -35,6 +36,23 @@ export class PaymentMethodsService {
     actor: RequestUser,
   ) {
     return this.prisma.$transaction(async (tx) => {
+      if (dto?.ledgerAccountId) {
+        const account = await tx.account.findFirst({
+          where: {
+            id: dto.ledgerAccountId,
+            hotelId: actor.hotelId,
+            type: AccountType.ASSET,
+            isActive: true,
+          },
+          select: { id: true },
+        });
+        if (!account) {
+          throw new ConflictException({
+            code: 'INVALID_PAYMENT_LEDGER_ACCOUNT',
+            message: 'Payment method ledger account must be an active same-hotel asset account.',
+          });
+        }
+      }
       const before = id
         ? await tx.paymentMethod.findFirst({ where: { id, hotelId: actor.hotelId } })
         : undefined;

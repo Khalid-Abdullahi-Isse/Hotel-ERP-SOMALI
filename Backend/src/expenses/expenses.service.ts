@@ -9,10 +9,12 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import type { CreateExpenseDto } from './dto/create-expense.dto.js';
 import type { ExpenseCategoryDto } from './dto/expense-category.dto.js';
 import type { ListExpensesQueryDto } from './dto/list-expenses-query.dto.js';
+import { AccountType } from '../generated/prisma/enums.js';
+import { ExpenseAccountingService } from '../accounting/expense-accounting.service.js';
 const INCLUDE = {
   hotel: { select: { currencyCode: true } },
-  category: { select: { id: true, name: true } },
-  paymentMethod: { select: { id: true, name: true } },
+  category: { select: { id: true, name: true, expenseAccountId: true } },
+  paymentMethod: { select: { id: true, name: true, ledgerAccountId: true } },
   createdBy: { select: { id: true, fullName: true } },
   reversedBy: { select: { id: true, fullName: true } },
 } as const;
@@ -21,6 +23,7 @@ export class ExpensesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audits: AuditLogsService,
+    private readonly expenseAccounting: ExpenseAccountingService,
   ) {}
   async categories(actor: RequestUser) {
     const manage = actor.permissions.includes(PERMISSIONS.EXPENSE_CATEGORY_MANAGE);
@@ -36,6 +39,23 @@ export class ExpensesService {
     actor: RequestUser,
   ) {
     return this.prisma.$transaction(async (tx) => {
+      if (dto?.expenseAccountId) {
+        const account = await tx.account.findFirst({
+          where: {
+            id: dto.expenseAccountId,
+            hotelId: actor.hotelId,
+            type: AccountType.EXPENSE,
+            isActive: true,
+          },
+          select: { id: true },
+        });
+        if (!account) {
+          throw new ConflictException({
+            code: 'INVALID_EXPENSE_ACCOUNT',
+            message: 'Expense category account must be an active same-hotel expense account.',
+          });
+        }
+      }
       const before = id
         ? await tx.expenseCategory.findFirst({ where: { id, hotelId: actor.hotelId } })
         : undefined;
@@ -83,6 +103,7 @@ export class ExpensesService {
             code: 'IDEMPOTENCY_KEY_REUSED',
             message: 'Request key was used for a different expense.',
           });
+        await this.expenseAccounting.postExpense(this.accountingEvent(existing), actor, tx);
         return { idempotentReplay: true, expense: this.view(existing) };
       }
       const category = await tx.expenseCategory.findFirst({
@@ -113,6 +134,7 @@ export class ExpensesService {
         },
         include: INCLUDE,
       });
+      await this.expenseAccounting.postExpense(this.accountingEvent(expense), actor, tx);
       await this.audits.record(
         {
           hotelId: actor.hotelId,
@@ -158,7 +180,12 @@ export class ExpensesService {
       }),
       this.prisma.expense.count({ where }),
     ]);
-    return paginatedResponse(values.map((v) => this.view(v)), query.page, query.limit, total);
+    return paginatedResponse(
+      values.map((v) => this.view(v)),
+      query.page,
+      query.limit,
+      total,
+    );
   }
   async find(id: string, actor: RequestUser) {
     const value = await this.prisma.expense.findFirst({
@@ -182,6 +209,7 @@ export class ExpensesService {
         data: { reversedAt: new Date(), reversedById: actor.id, reversalReason: reason.trim() },
         include: INCLUDE,
       });
+      await this.expenseAccounting.reverseExpense(id, reason, actor, tx);
       await this.audits.record(
         {
           hotelId: actor.hotelId,
@@ -203,6 +231,18 @@ export class ExpensesService {
       amount: v.amount.toString(),
       expenseDate: v.expenseDate.toISOString().slice(0, 10),
       reversed: 'reversedAt' in v && Boolean(v.reversedAt),
+    };
+  }
+  private accountingEvent(expense: Prisma.ExpenseGetPayload<{ include: typeof INCLUDE }>) {
+    return {
+      id: expense.id,
+      amount: expense.amount,
+      expenseDate: expense.expenseDate,
+      description: expense.description,
+      reference: expense.reference,
+      expenseAccountId: expense.category.expenseAccountId,
+      paymentAccountId: expense.paymentMethod?.ledgerAccountId,
+      hasPaymentMethod: expense.paymentMethodId !== null,
     };
   }
   private notFound(): never {
