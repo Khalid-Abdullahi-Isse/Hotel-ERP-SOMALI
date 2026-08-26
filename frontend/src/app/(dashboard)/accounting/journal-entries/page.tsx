@@ -18,6 +18,9 @@ import {
 } from "@/components/ui/table";
 import { parsePage } from "@/lib/pagination";
 import { getJournalEntries } from "@/services/accounting.server";
+import { getCurrentUser } from "@/services/auth.server";
+import { PERMISSIONS } from "@/constants/permissions";
+import { can } from "@/lib/permissions";
 
 export const metadata: Metadata = { title: "Journal Entries" };
 export default async function JournalEntriesPage({
@@ -26,17 +29,13 @@ export default async function JournalEntriesPage({
   searchParams: Promise<{ page?: string; search?: string; status?: string }>;
 }) {
   const params = await searchParams;
-  const entries = await getJournalEntries({
-    page: parsePage(params.page),
-    search: params.search,
-    status: params.status?.toUpperCase(),
-  });
+  const [entries, user] = await Promise.all([getJournalEntries({ page: parsePage(params.page), search: params.search, status: params.status?.toUpperCase() }), getCurrentUser()]);
   return (
     <div className="space-y-6">
       <PageHeader
         title="Journal Entries"
         description="Immutable posted entries, drafts, and linked reversals."
-        actions={<Button asChild><Link href="/accounting/journal-entries/new"><Plus />New entry</Link></Button>}
+        actions={user && can(user, PERMISSIONS.journalsPost) ? <Button asChild><Link href="/accounting/journal-entries/new"><Plus />New entry</Link></Button> : null}
       />
       <AccountingNav />
       <Card className="py-0">

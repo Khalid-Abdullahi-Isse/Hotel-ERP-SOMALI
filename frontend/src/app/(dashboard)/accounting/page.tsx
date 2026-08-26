@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { ArrowRight, BookOpen, CircleCheck, Landmark, ListChecks, Scale, Settings2, TrendingUp } from "lucide-react";
 import { AccountingNav } from "@/components/accounting/accounting-nav";
 import { accountingMoney, accountingPeriod } from "@/lib/accounting";
@@ -7,6 +8,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PERMISSIONS } from "@/constants/permissions";
 import {
   getAccountingAccounts,
   getAccountingSettings,
@@ -14,10 +16,20 @@ import {
   getJournalEntries,
   getProfitLoss,
 } from "@/services/accounting.server";
+import { getCurrentUser } from "@/services/auth.server";
+import { can } from "@/lib/permissions";
 
 export const metadata: Metadata = { title: "Accounting" };
 
 export default async function AccountingPage() {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+  if (!can(user, PERMISSIONS.accountingRead)) {
+    if (can(user, PERMISSIONS.financialReportsRead)) redirect("/accounting/profit-loss");
+    if (can(user, PERMISSIONS.chartOfAccountsRead)) redirect("/accounting/chart-of-accounts");
+    if (can(user, PERMISSIONS.journalsRead)) redirect("/accounting/journal-entries");
+    redirect("/403");
+  }
   const period = accountingPeriod();
   const settings = await getAccountingSettings();
   if (!settings) return <div className="space-y-6"><PageHeader title="Accounting" description="Double-entry accounting for hotel operations, controls, and financial statements." actions={<Button asChild><Link href="/accounting/settings"><Settings2 />Open setup</Link></Button>} /><AccountingNav /><Card className="border-dashed"><CardContent className="flex min-h-80 flex-col items-center justify-center px-6 text-center"><div className="grid size-14 place-items-center rounded-2xl bg-primary/10 text-primary"><BookOpen className="size-6" /></div><h2 className="mt-5 text-xl font-semibold">Accounting is ready to be initialized</h2><p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">Create the standard chart of accounts and journals, then verify the operational mappings before your first posting.</p><Button className="mt-6" asChild><Link href="/accounting/settings">Set up accounting <ArrowRight /></Link></Button></CardContent></Card></div>;
@@ -46,7 +58,7 @@ export default async function AccountingPage() {
       <PageHeader
         title="Accounting"
         description="Posted double-entry results, controls, and audit-ready financial statements."
-        actions={<><Button variant="outline" asChild><Link href="/accounting/settings"><Settings2 />Setup</Link></Button><Button asChild><Link href="/accounting/journal-entries/new">New journal entry</Link></Button></>}
+        actions={<><Button variant="outline" asChild><Link href="/accounting/settings"><Settings2 />Setup</Link></Button>{can(user, PERMISSIONS.journalsPost) ? <Button asChild><Link href="/accounting/journal-entries/new">New journal entry</Link></Button> : null}</>}
       />
       <AccountingNav />
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
