@@ -98,6 +98,11 @@ enum JournalEntryStatus {
   REVERSED
 }
 
+enum FiscalPeriodStatus {
+  OPEN
+  CLOSED
+}
+
 model Hotel {
   id                  String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   code                String               @unique @db.VarChar(32)
@@ -131,6 +136,7 @@ model Hotel {
   journalEntries      JournalEntry[]
   accountingSettings  AccountingSettings?
   accountingSequences AccountingSequence[]
+  fiscalPeriods       FiscalPeriod[]
 }
 
 model User {
@@ -372,10 +378,42 @@ model ReservationRoom {
   reservation   Reservation       @relation(fields: [reservationId], references: [id], onDelete: Restrict)
   room          Room              @relation(fields: [roomId], references: [id], onDelete: Restrict)
   roomCharge    Charge?
+  roomNights    ReservationRoomNight[]
 
   @@unique([reservationId, roomId])
   @@index([roomId, checkInDate, checkOutDate])
   @@index([reservationId])
+}
+
+model ReservationRoomNight {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  hotelId           String   @db.Uuid
+  reservationRoomId String   @db.Uuid
+  businessDate      DateTime @db.Date
+  nightlyRate       Decimal  @db.Decimal(14, 2)
+  amount            Decimal  @db.Decimal(14, 2)
+  status            String   @default("POSTED") @db.VarChar(32)
+  createdAt         DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime @updatedAt @db.Timestamptz(3)
+  reservationRoom   ReservationRoom @relation(fields: [reservationRoomId], references: [id], onDelete: Restrict)
+
+  @@unique([hotelId, reservationRoomId, businessDate])
+  @@index([hotelId, businessDate, status])
+  @@index([reservationRoomId, businessDate])
+}
+
+model HotelBusinessDate {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  hotelId          String   @db.Uuid
+  businessDate     DateTime @db.Date
+  status           String   @default("OPEN") @db.VarChar(32)
+  roomNights       Int      @default(0)
+  totalRoomRevenue Decimal  @default(0) @db.Decimal(14, 2)
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+
+  @@unique([hotelId, businessDate])
+  @@index([hotelId, businessDate, status])
 }
 
 model ReservationHistory {
@@ -703,6 +741,24 @@ model AccountingJournal {
   @@index([hotelId, type, isActive])
 }
 
+model FiscalPeriod {
+  id        String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  hotelId   String             @db.Uuid
+  name      String             @db.VarChar(160)
+  startDate DateTime           @db.Date
+  endDate   DateTime           @db.Date
+  status    FiscalPeriodStatus @default(OPEN)
+  isOpening Boolean            @default(false)
+  createdAt DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime           @updatedAt @db.Timestamptz(3)
+  hotel     Hotel              @relation(fields: [hotelId], references: [id], onDelete: Restrict)
+  entries   JournalEntry[]
+
+  @@unique([hotelId, name])
+  @@index([hotelId, startDate, endDate])
+  @@index([hotelId, startDate, status])
+}
+
 model JournalEntry {
   id               String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   hotelId          String             @db.Uuid
@@ -715,6 +771,7 @@ model JournalEntry {
   reference        String?            @db.VarChar(120)
   description      String             @db.VarChar(255)
   status           JournalEntryStatus @default(DRAFT)
+  fiscalPeriodId   String?            @db.Uuid
   createdById      String             @db.Uuid
   postedById       String?            @db.Uuid
   postedAt         DateTime?          @db.Timestamptz(3)
@@ -727,6 +784,7 @@ model JournalEntry {
   updatedAt        DateTime           @updatedAt @db.Timestamptz(3)
   hotel            Hotel              @relation(fields: [hotelId], references: [id], onDelete: Restrict)
   journal          AccountingJournal  @relation(fields: [journalId], references: [id], onDelete: Restrict)
+  fiscalPeriod     FiscalPeriod?      @relation(fields: [fiscalPeriodId], references: [id], onDelete: Restrict)
   createdBy        User               @relation("JournalEntryCreator", fields: [createdById], references: [id], onDelete: Restrict)
   postedBy         User?              @relation("JournalEntryPoster", fields: [postedById], references: [id], onDelete: Restrict)
   reversedBy       User?              @relation("JournalEntryReverser", fields: [reversedById], references: [id], onDelete: Restrict)

@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import { AccountingNav } from "@/components/accounting/accounting-nav";
-import { accountingMoney, accountingPeriod } from "@/lib/accounting";
+import { accountingMoney, accountingPeriod, normalizeAccountingDate } from "@/lib/accounting";
 import { BalanceTable } from "@/components/accounting/balance-table";
 import { ReportPeriod } from "@/components/accounting/report-period";
 import { PageHeader } from "@/components/shared/page-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getBalanceSheet } from "@/services/accounting.server";
+import getBalanceSheet from "@/services/accounting.server";
 
 export const metadata: Metadata = { title: "Balance Sheet" };
 export default async function BalanceSheetPage({
@@ -15,8 +15,8 @@ export default async function BalanceSheetPage({
   searchParams: Promise<{ dateTo?: string }>;
 }) {
   const params = await searchParams;
-  const dateTo = params.dateTo ?? accountingPeriod().dateTo;
-  const report = await getBalanceSheet(dateTo);
+  const dateTo = normalizeAccountingDate(params.dateTo, accountingPeriod().dateTo);
+  const report = await getBalanceSheet(accountingPeriod().dateFrom, dateTo);
   const currency = report.report.currency;
   return (
     <div className="space-y-6">

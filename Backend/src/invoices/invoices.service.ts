@@ -7,6 +7,7 @@ import type { RequestUser } from '../auth/auth.types.js';
 import { runSerializable } from '../common/database/serializable-transaction.js';
 import { paginatedResponse, paginationOffset } from '../common/pagination/pagination.util.js';
 import { PaymentsService } from '../payments/payments.service.js';
+import { GuestAccountingService } from '../accounting/guest-accounting.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type { ListInvoicesQueryDto } from './dto/list-invoices-query.dto.js';
 const INCLUDE = {
@@ -29,6 +30,7 @@ export class InvoicesService {
     private readonly prisma: PrismaService,
     private readonly payments: PaymentsService,
     private readonly audits: AuditLogsService,
+    private readonly guestAccounting: GuestAccountingService,
   ) {}
   create(reservationId: string, actor: RequestUser) {
     return runSerializable(this.prisma, async (tx) => {
@@ -85,6 +87,18 @@ export class InvoicesService {
         where: { id: invoice.id },
         data: { status: InvoiceStatus.ISSUED, issuedAt: new Date(), issuedById: actor.id },
       });
+      await this.guestAccounting.postDiscount(
+        {
+          id: invoice.id,
+          reservationId,
+          amount: invoice.discountAmount,
+          occurredAt: invoice.createdAt,
+          description: `Discount for invoice ${invoice.invoiceNumber}`,
+        },
+        invoice.discountAmount,
+        actor,
+        tx,
+      );
       await this.payments.syncInvoice(reservationId, tx);
       const issued = await tx.invoice.findUniqueOrThrow({
         where: { id: invoice.id },

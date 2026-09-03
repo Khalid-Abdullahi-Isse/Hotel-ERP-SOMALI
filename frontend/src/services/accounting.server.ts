@@ -53,7 +53,20 @@ export async function getAccountingSettings() {
 }
 
 export function getJournalEntries(
-  values: { page?: number; search?: string; status?: string } = {},
+  values: {
+    page?: number;
+    search?: string;
+    status?: string;
+    description?: string;
+    accountId?: string;
+    accountCode?: string;
+    currency?: string;
+    debit?: string;
+    credit?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    order?: "asc" | "desc";
+  } = {},
 ) {
   return serverApi<AccountingPage<JournalEntrySummary>>(
     `/accounting/journal-entries?${queryString(values)}`,
@@ -76,8 +89,12 @@ export function getTrialBalance(dateFrom: string, dateTo: string) {
     report: ReportMetadata;
     data: TrialBalanceRow[];
     totals: {
-      debit: string;
-      credit: string;
+      openingDebit: string;
+      openingCredit: string;
+      periodDebit: string;
+      periodCredit: string;
+      closingDebit: string;
+      closingCredit: string;
       difference: string;
       balanced: boolean;
     };
@@ -94,7 +111,9 @@ export function getProfitLoss(dateFrom: string, dateTo: string) {
   }>(`/accounting/profit-loss?${queryString({ dateFrom, dateTo })}`);
 }
 
-export function getBalanceSheet(dateTo: string) {
+
+
+export default function getBalanceSheet(dateFrom: string, dateTo: string) {
   return serverApi<{
     report: ReportMetadata;
     assets: BalanceRow[];
@@ -110,6 +129,9 @@ export function getBalanceSheet(dateTo: string) {
     };
     warning: string | null;
   }>(
-    `/accounting/balance-sheet?${queryString({ dateFrom: "0001-01-01", dateTo })}`,
+    `/accounting/balance-sheet?${queryString({
+      dateFrom,
+      dateTo,
+    })}`,
   );
 }

@@ -11,7 +11,7 @@ const links = [
   ["Overview", "/accounting", PERMISSIONS.accountingRead],
   ["Chart of Accounts", "/accounting/chart-of-accounts", PERMISSIONS.chartOfAccountsRead],
   ["Journals", "/accounting/journals", PERMISSIONS.journalsRead],
-  ["Entries", "/accounting/journal-entries", PERMISSIONS.journalsRead],
+  ["Transactions", "/accounting/journal-entries", PERMISSIONS.journalsRead],
   ["General Ledger", "/accounting/general-ledger", PERMISSIONS.financialReportsRead],
   ["Trial Balance", "/accounting/trial-balance", PERMISSIONS.financialReportsRead],
   ["Profit & Loss", "/accounting/profit-loss", PERMISSIONS.financialReportsRead],

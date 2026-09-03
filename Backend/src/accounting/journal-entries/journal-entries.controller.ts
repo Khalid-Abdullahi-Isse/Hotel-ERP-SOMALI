@@ -5,6 +5,7 @@ import type { RequestUser } from '../../auth/auth.types.js';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import { RequirePermissions } from '../../common/decorators/permissions.decorator.js';
 import { CreateJournalEntryDto } from './dto/create-journal-entry.dto.js';
+import { CreateOpeningBalanceDto } from './dto/create-opening-balance.dto.js';
 import { ListJournalEntriesQueryDto } from './dto/list-journal-entries-query.dto.js';
 import { ReverseJournalEntryDto } from './dto/reverse-journal-entry.dto.js';
 import { JournalEntriesService } from './journal-entries.service.js';
@@ -38,6 +39,15 @@ export class JournalEntriesController {
   @RequirePermissions(PERMISSIONS.JOURNAL_POST)
   create(@Body() dto: CreateJournalEntryDto, @CurrentUser() actor: RequestUser) {
     return this.entries.create(dto, actor);
+  }
+
+  @Post('opening-balance')
+  @RequirePermissions(PERMISSIONS.JOURNAL_POST)
+  createOpeningBalance(
+    @Body() dto: CreateOpeningBalanceDto,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    return this.entries.createOpeningBalance(dto, actor);
   }
 
   @Post(':id/post')

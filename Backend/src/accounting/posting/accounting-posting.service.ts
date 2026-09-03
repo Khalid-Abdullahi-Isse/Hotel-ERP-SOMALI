@@ -1,11 +1,12 @@
 import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Prisma } from '../../generated/prisma/client.js';
-import { JournalEntryStatus } from '../../generated/prisma/enums.js';
+import { FiscalPeriodStatus, JournalEntryStatus } from '../../generated/prisma/enums.js';
 import { AuditLogsService } from '../../audit-logs/audit-logs.service.js';
 import type { RequestUser } from '../../auth/auth.types.js';
 import { runSerializable } from '../../common/database/serializable-transaction.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { validateBalancedLines } from '../common/accounting-money.js';
+import { FiscalPeriodsService } from '../fiscal-periods/fiscal-periods.service.js';
 
 export interface PostingLineInput {
   accountId: string;
@@ -30,6 +31,7 @@ export interface AccountingEventInput {
 
 const ENTRY_INCLUDE = {
   journal: { select: { id: true, code: true, name: true, type: true } },
+  fiscalPeriod: { select: { id: true, name: true, status: true } },
   createdBy: { select: { id: true, fullName: true } },
   postedBy: { select: { id: true, fullName: true } },
   reversedBy: { select: { id: true, fullName: true } },
@@ -48,6 +50,7 @@ export class AccountingPostingService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audits: AuditLogsService,
+    private readonly periods: FiscalPeriodsService,
   ) {}
 
   createManualDraft(
@@ -115,6 +118,7 @@ export class AccountingPostingService {
         entry.lines,
         entry.sourceType === 'MANUAL',
       );
+      await this.assertPeriodOpen(tx, actor.hotelId, entry.businessDate.toISOString().slice(0, 10));
       const postedAt = new Date();
       await tx.journalEntry.update({
         where: { id: entryId },
@@ -156,6 +160,11 @@ export class AccountingPostingService {
           message: 'Only a posted, unreversed journal entry can be reversed.',
         });
       }
+      await this.assertPeriodOpen(
+        tx,
+        actor.hotelId,
+        original.businessDate.toISOString().slice(0, 10),
+      );
       const reversal = await this.createDraft(tx, {
         hotelId: actor.hotelId,
         actorId: actor.id,
@@ -232,6 +241,7 @@ export class AccountingPostingService {
 
     validateBalancedLines(input.lines);
     await this.validateJournalAndAccounts(tx, input.hotelId, input.journalId, input.lines, false);
+    await this.assertPeriodOpen(tx, input.hotelId, input.businessDate);
     const draft = await this.createDraft(tx, input);
     const postedAt = new Date();
     await tx.journalEntry.update({
@@ -299,6 +309,11 @@ export class AccountingPostingService {
       });
     }
 
+    await this.assertPeriodOpen(
+      tx,
+      input.hotelId,
+      original.businessDate.toISOString().slice(0, 10),
+    );
     const reversal = await this.createDraft(tx, {
       hotelId: input.hotelId,
       actorId: input.actorId,
@@ -378,6 +393,12 @@ export class AccountingPostingService {
       select: { currencyCode: true },
     });
     const entryNumber = await this.nextEntryNumber(tx, input.hotelId, input.businessDate);
+    const period = await this.periods.resolvePeriodForDate(
+      tx,
+      input.hotelId,
+      input.businessDate,
+      { allowCreate: true },
+    );
     return tx.journalEntry.create({
       data: {
         hotelId: input.hotelId,
@@ -389,6 +410,7 @@ export class AccountingPostingService {
         sourceId: input.sourceId,
         reference: input.reference?.trim(),
         description: input.description.trim(),
+        fiscalPeriodId: period?.id ?? null,
         createdById: input.actorId,
         reversedEntryId: input.reversedEntryId,
         lines: {
@@ -461,6 +483,20 @@ export class AccountingPostingService {
       throw new ConflictException({
         code: 'MANUAL_POSTING_NOT_ALLOWED',
         message: 'One or more accounts do not allow manual posting.',
+      });
+    }
+  }
+
+  private async assertPeriodOpen(
+    tx: Prisma.TransactionClient,
+    hotelId: string,
+    businessDate: string,
+  ) {
+    const period = await this.periods.resolvePeriodForDate(tx, hotelId, businessDate);
+    if (period && period.status === FiscalPeriodStatus.CLOSED) {
+      throw new ConflictException({
+        code: 'FISCAL_PERIOD_CLOSED',
+        message: 'Posting is not allowed into a closed fiscal period.',
       });
     }
   }

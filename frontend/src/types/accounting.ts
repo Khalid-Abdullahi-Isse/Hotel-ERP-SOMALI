@@ -69,10 +69,26 @@ export type AccountingSettingsInput = Pick<
   | "defaultAccountsPayableAccountId"
 >;
 
+export interface JournalEntryLine {
+  id: string;
+  accountId: string;
+  description: string | null;
+  debit: string;
+  credit: string;
+  currency: string;
+  exchangeRate: string;
+  createdAt: string;
+  account: Pick<
+    AccountingAccount,
+    "id" | "code" | "name" | "type" | "normalBalance"
+  >;
+}
+
 export interface JournalEntrySummary {
   id: string;
   entryNumber: string;
   businessDate: string;
+  postingDate: string;
   sourceType: string;
   reference: string | null;
   description: string;
@@ -80,6 +96,7 @@ export interface JournalEntrySummary {
   totalDebit: string;
   totalCredit: string;
   difference: string;
+  lines: JournalEntryLine[];
   journal: { id: string; code: string; name: string; type: string };
   postedBy: { id: string; fullName: string } | null;
 }
@@ -91,16 +108,6 @@ export interface JournalEntryDetail extends JournalEntrySummary {
   reversalEntry: { id: string; entryNumber: string } | null;
   reversedAt: string | null;
   reversalReason: string | null;
-  lines: Array<{
-    id: string;
-    description: string | null;
-    debit: string;
-    credit: string;
-    account: Pick<
-      AccountingAccount,
-      "id" | "code" | "name" | "type" | "normalBalance"
-    >;
-  }>;
 }
 
 export interface AccountInput {
@@ -150,10 +157,12 @@ export interface TrialBalanceRow {
   accountName: string;
   accountType: AccountType;
   normalBalance: "DEBIT" | "CREDIT";
-  openingBalance: string;
-  debit: string;
-  credit: string;
-  closingBalance: string;
+  openingDebit: string;
+  openingCredit: string;
+  periodDebit: string;
+  periodCredit: string;
+  closingDebit: string;
+  closingCredit: string;
 }
 
 export interface BalanceRow {

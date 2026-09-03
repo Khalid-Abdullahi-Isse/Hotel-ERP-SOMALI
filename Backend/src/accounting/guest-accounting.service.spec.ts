@@ -35,6 +35,7 @@ describe('GuestAccountingService', () => {
     defaultMobileMoneyAccountId: 'mobile',
     defaultDepositAccountId: 'deposit',
     defaultServiceRevenueAccountId: 'service-revenue',
+    defaultDiscountAccountId: 'discount',
   };
   const journals = ['GEN', 'SALES', 'CASH', 'BANK', 'MOBILE'].map((code) => ({
     id: `${code.toLowerCase()}-journal`,
@@ -163,6 +164,32 @@ describe('GuestAccountingService', () => {
       lines: [
         { accountId: 'deposit', debit: '30', credit: '0' },
         { accountId: 'receivable', debit: '0', credit: '30' },
+      ],
+    });
+  });
+
+  it('posts a discount as a contra-revenue adjustment against the revenue amount', async () => {
+    const { service, posting, tx } = setup();
+
+    await service.postDiscount(
+      {
+        id: '40000000-0000-0000-0000-000000000005',
+        reservationId,
+        amount: new Decimal(10),
+        occurredAt: new Date('2026-08-25T14:00:00Z'),
+        description: 'Settlement discount',
+      },
+      new Decimal(10),
+      actor,
+      tx,
+    );
+
+    expect(posting.postEvent).toHaveBeenCalledTimes(1);
+    expect((posting.postEvent.mock.calls as unknown as Array<[PostedEvent]>)[0][0]).toMatchObject({
+      sourceType: 'GUEST_DISCOUNT',
+      lines: [
+        { accountId: 'discount', debit: '10', credit: '0' },
+        { accountId: 'receivable', debit: '0', credit: '10' },
       ],
     });
   });

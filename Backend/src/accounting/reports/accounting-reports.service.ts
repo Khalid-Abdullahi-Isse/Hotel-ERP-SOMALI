@@ -1,10 +1,11 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '../../generated/prisma/client.js';
 import type { RequestUser } from '../../auth/auth.types.js';
 import { paginatedResponse, paginationOffset } from '../../common/pagination/pagination.util.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import type {
   AccountingReportQueryDto,
+  BalanceSheetQueryDto,
   GeneralLedgerQueryDto,
 } from './dto/accounting-report-query.dto.js';
 
@@ -88,6 +89,7 @@ export class AccountingReportsService {
 
   async trialBalance(query: AccountingReportQueryDto, actor: RequestUser) {
     this.validateDates(query.dateFrom, query.dateTo);
+
     const rows = await this.prisma.$queryRaw<
       Array<{
         accountId: string;
@@ -96,46 +98,85 @@ export class AccountingReportsService {
         accountType: string;
         normalBalance: 'DEBIT' | 'CREDIT';
         openingNet: Prisma.Decimal;
-        debit: Prisma.Decimal;
-        credit: Prisma.Decimal;
+        periodDebit: Prisma.Decimal;
+        periodCredit: Prisma.Decimal;
         closingNet: Prisma.Decimal;
       }>
     >(Prisma.sql`
-      SELECT a.id "accountId",a.code "accountCode",a.name "accountName",a.type::text "accountType",a."normalBalance",
-        CASE WHEN a."normalBalance"='DEBIT' THEN coalesce(sum(jl.debit-jl.credit) FILTER(WHERE je."businessDate"<${query.dateFrom}::date),0)
-          ELSE coalesce(sum(jl.credit-jl.debit) FILTER(WHERE je."businessDate"<${query.dateFrom}::date),0) END "openingNet",
-        coalesce(sum(jl.debit) FILTER(WHERE je."businessDate">=${query.dateFrom}::date AND je."businessDate"<=${query.dateTo}::date),0) debit,
-        coalesce(sum(jl.credit) FILTER(WHERE je."businessDate">=${query.dateFrom}::date AND je."businessDate"<=${query.dateTo}::date),0) credit,
-        CASE WHEN a."normalBalance"='DEBIT' THEN coalesce(sum(jl.debit-jl.credit) FILTER(WHERE je."businessDate"<=${query.dateTo}::date),0)
-          ELSE coalesce(sum(jl.credit-jl.debit) FILTER(WHERE je."businessDate"<=${query.dateTo}::date),0) END "closingNet"
+      SELECT a.id "accountId", a.code "accountCode", a.name "accountName",
+        a.type::text "accountType", a."normalBalance",
+        coalesce(sum(jl.debit - jl.credit) FILTER (WHERE je."businessDate" < ${query.dateFrom}::date), 0) "openingNet",
+        coalesce(sum(jl.debit) FILTER (WHERE je."businessDate" >= ${query.dateFrom}::date AND je."businessDate" <= ${query.dateTo}::date), 0) "periodDebit",
+        coalesce(sum(jl.credit) FILTER (WHERE je."businessDate" >= ${query.dateFrom}::date AND je."businessDate" <= ${query.dateTo}::date), 0) "periodCredit",
+        coalesce(sum(jl.debit - jl.credit) FILTER (WHERE je."businessDate" <= ${query.dateTo}::date), 0) "closingNet"
       FROM "Account" a
-      LEFT JOIN "JournalLine" jl ON jl."accountId"=a.id
-      LEFT JOIN "JournalEntry" je ON je.id=jl."journalEntryId" AND je.status IN ('POSTED','REVERSED')
-      WHERE a."hotelId"=${actor.hotelId}::uuid
-      GROUP BY a.id ORDER BY a.code
+      LEFT JOIN "JournalLine" jl ON jl."accountId" = a.id
+      LEFT JOIN "JournalEntry" je ON je.id = jl."journalEntryId" AND je.status IN ('POSTED','REVERSED')
+      WHERE a."hotelId" = ${actor.hotelId}::uuid
+        AND NOT EXISTS (
+          SELECT 1 FROM "Account" child WHERE child."parentAccountId" = a.id
+        )
+      GROUP BY a.id
+      ORDER BY a.code
     `);
-    const totalDebit = rows.reduce((sum, row) => sum.plus(row.debit), new Prisma.Decimal(0));
-    const totalCredit = rows.reduce((sum, row) => sum.plus(row.credit), new Prisma.Decimal(0));
-    const difference = totalDebit.minus(totalCredit);
+
+    const directionalRows = rows.map((row) => {
+      const openingNet = this.toDecimal(row.openingNet);
+      const closingNet = this.toDecimal(row.closingNet);
+      const opening = this.netToDirection(openingNet, row.normalBalance);
+      const closing = this.netToDirection(closingNet, row.normalBalance);
+      return {
+        accountId: row.accountId,
+        accountCode: row.accountCode,
+        accountName: row.accountName,
+        accountType: row.accountType,
+        normalBalance: row.normalBalance,
+        openingDebit: opening.debit,
+        openingCredit: opening.credit,
+        periodDebit: this.toDecimal(row.periodDebit),
+        periodCredit: this.toDecimal(row.periodCredit),
+        closingDebit: closing.debit,
+        closingCredit: closing.credit,
+      };
+    });
+
+    const zero = new Prisma.Decimal(0);
+    const totalOpeningDebit = directionalRows.reduce((s, r) => s.plus(r.openingDebit), zero);
+    const totalOpeningCredit = directionalRows.reduce((s, r) => s.plus(r.openingCredit), zero);
+    const totalPeriodDebit = directionalRows.reduce((s, r) => s.plus(r.periodDebit), zero);
+    const totalPeriodCredit = directionalRows.reduce((s, r) => s.plus(r.periodCredit), zero);
+    const totalClosingDebit = directionalRows.reduce((s, r) => s.plus(r.closingDebit), zero);
+    const totalClosingCredit = directionalRows.reduce((s, r) => s.plus(r.closingCredit), zero);
+    const difference = totalClosingDebit.minus(totalClosingCredit);
+    const isBalanced = difference.eq(0);
+
     const hotel = await this.hotel(actor.hotelId);
     return {
       report: this.metadata(query.dateFrom, query.dateTo, hotel),
-      data: rows.map((row) => ({
-        ...row,
-        openingBalance: row.openingNet.toFixed(4),
-        debit: row.debit.toFixed(4),
-        credit: row.credit.toFixed(4),
-        closingBalance: row.closingNet.toFixed(4),
-        openingNet: undefined,
-        closingNet: undefined,
+      data: directionalRows.map((row) => ({
+        accountId: row.accountId,
+        accountCode: row.accountCode,
+        accountName: row.accountName,
+        accountType: row.accountType,
+        normalBalance: row.normalBalance,
+        openingDebit: row.openingDebit.toFixed(2),
+        openingCredit: row.openingCredit.toFixed(2),
+        periodDebit: row.periodDebit.toFixed(2),
+        periodCredit: row.periodCredit.toFixed(2),
+        closingDebit: row.closingDebit.toFixed(2),
+        closingCredit: row.closingCredit.toFixed(2),
       })),
       totals: {
-        debit: totalDebit.toFixed(4),
-        credit: totalCredit.toFixed(4),
-        difference: difference.toFixed(4),
-        balanced: difference.eq(0),
+        openingDebit: totalOpeningDebit.toFixed(2),
+        openingCredit: totalOpeningCredit.toFixed(2),
+        periodDebit: totalPeriodDebit.toFixed(2),
+        periodCredit: totalPeriodCredit.toFixed(2),
+        closingDebit: totalClosingDebit.toFixed(2),
+        closingCredit: totalClosingCredit.toFixed(2),
+        difference: difference.toFixed(2),
+        balanced: isBalanced,
       },
-      warning: difference.eq(0) ? null : 'SERIOUS_ACCOUNTING_IMBALANCE',
+      warning: isBalanced ? null : 'SERIOUS_ACCOUNTING_IMBALANCE',
     };
   }
 
@@ -169,16 +210,14 @@ export class AccountingReportsService {
     };
   }
 
-  async balanceSheet(query: AccountingReportQueryDto, actor: RequestUser) {
-    this.validateDates(query.dateFrom, query.dateTo);
-    const startOfBooks = '0001-01-01';
-    const rows = await this.accountBalances(actor.hotelId, startOfBooks, query.dateTo, [
-      'ASSET',
-      'LIABILITY',
-      'EQUITY',
-      'REVENUE',
-      'EXPENSE',
-    ]);
+  async balanceSheet(query: BalanceSheetQueryDto, actor: RequestUser) {
+    if (query.dateFrom) this.validateDates(query.dateFrom, query.dateTo);
+    const rows = await this.accountBalances(
+      actor.hotelId,
+      null,
+      query.dateTo,
+      ['ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE'],
+    );
     const assets = rows
       .filter((row) => row.accountType === 'ASSET')
       .map((row) => ({ ...row, balance: row.debit.minus(row.credit) }));
@@ -206,7 +245,7 @@ export class AccountingReportsService {
     const difference = totalAssets.minus(totalLiabilities).minus(totalEquity);
     const hotel = await this.hotel(actor.hotelId);
     return {
-      report: this.metadata(startOfBooks, query.dateTo, hotel),
+      report: this.metadata(query.dateTo, query.dateTo, hotel),
       assets: assets.map((row) => this.balanceView(row)),
       liabilities: liabilities.map((row) => this.balanceView(row)),
       equity: equity.map((row) => this.balanceView(row)),
@@ -220,6 +259,111 @@ export class AccountingReportsService {
       },
       warning: difference.eq(0) ? null : 'SERIOUS_ACCOUNTING_EQUATION_IMBALANCE',
     };
+  }
+
+  async accountStatement(query: GeneralLedgerQueryDto, accountId: string, actor: RequestUser) {
+    this.validateDates(query.dateFrom, query.dateTo);
+    const account = await this.prisma.account.findFirst({
+      where: { id: accountId, hotelId: actor.hotelId },
+      select: { id: true, code: true, name: true, type: true, normalBalance: true },
+    });
+    if (!account) {
+      throw new NotFoundException({
+        code: 'ACCOUNT_NOT_FOUND',
+        message: 'Account was not found.',
+      });
+    }
+    const rows = await this.prisma.$queryRaw<
+      Array<{
+        id: string;
+        postingDate: Date;
+        businessDate: Date;
+        entryId: string;
+        entryNumber: string;
+        reference: string | null;
+        description: string;
+        sourceType: string;
+        debit: Prisma.Decimal;
+        credit: Prisma.Decimal;
+        runningBalance: Prisma.Decimal;
+      }>
+    >(Prisma.sql`
+      WITH opening AS (
+        SELECT coalesce(sum(jl."debit" - jl."credit"), 0) amount
+        FROM "JournalLine" jl
+        JOIN "JournalEntry" je ON je.id=jl."journalEntryId"
+        WHERE jl."accountId"=${accountId}::uuid
+          AND je."hotelId"=${actor.hotelId}::uuid
+          AND je.status IN ('POSTED','REVERSED')
+          AND je."businessDate" < ${query.dateFrom}::date
+      )
+      SELECT jl.id, je."postingDate", je."businessDate", je.id "entryId", je."entryNumber",
+        je.reference, coalesce(jl.description, je.description) description,
+        je."sourceType", jl.debit, jl.credit,
+        CASE WHEN a."normalBalance"='DEBIT'
+          THEN coalesce(o.amount,0) + sum(jl.debit-jl.credit) OVER (ORDER BY je."businessDate",je."postingDate",je."entryNumber",jl.id)
+          ELSE -(coalesce(o.amount,0) + sum(jl.debit-jl.credit) OVER (ORDER BY je."businessDate",je."postingDate",je."entryNumber",jl.id))
+        END "runningBalance"
+      FROM "JournalLine" jl
+      JOIN "JournalEntry" je ON je.id=jl."journalEntryId"
+      JOIN "Account" a ON a.id=jl."accountId"
+      CROSS JOIN opening o
+      WHERE jl."accountId"=${accountId}::uuid
+        AND je."hotelId"=${actor.hotelId}::uuid
+        AND je.status IN ('POSTED','REVERSED')
+        AND je."businessDate">=${query.dateFrom}::date
+        AND je."businessDate"<=${query.dateTo}::date
+      ORDER BY je."businessDate",je."postingDate",je."entryNumber",jl.id
+    `);
+    const closing = rows.length
+      ? rows[rows.length - 1].runningBalance
+      : await this.openingBalance(actor.hotelId, accountId, query.dateFrom);
+    const totalDebit = rows.reduce((sum, row) => sum.plus(row.debit), new Prisma.Decimal(0));
+    const totalCredit = rows.reduce((sum, row) => sum.plus(row.credit), new Prisma.Decimal(0));
+    const hotel = await this.hotel(actor.hotelId);
+    return {
+      report: this.metadata(query.dateFrom, query.dateTo, hotel),
+      account,
+      transactions: rows.map((row) => ({
+        id: row.id,
+        entryId: row.entryId,
+        entryNumber: row.entryNumber,
+        postingDate: row.postingDate.toISOString(),
+        businessDate: row.businessDate.toISOString().slice(0, 10),
+        reference: row.reference,
+        description: row.description,
+        sourceType: row.sourceType,
+        debit: row.debit.toFixed(4),
+        credit: row.credit.toFixed(4),
+        runningBalance: row.runningBalance.toFixed(4),
+      })),
+      totals: {
+        debit: totalDebit.toFixed(4),
+        credit: totalCredit.toFixed(4),
+        closingBalance: closing.toFixed(4),
+      },
+    };
+  }
+
+  private async openingBalance(
+    hotelId: string,
+    accountId: string,
+    dateFrom: string,
+  ): Promise<Prisma.Decimal> {
+    const rows = await this.prisma.$queryRaw<
+      Array<{ amount: Prisma.Decimal }>
+    >(Prisma.sql`
+      SELECT CASE WHEN a."normalBalance"='DEBIT'
+        THEN coalesce(sum(jl."debit" - jl."credit") FILTER(WHERE je."businessDate" < ${dateFrom}::date), 0)
+        ELSE coalesce(sum(jl."credit" - jl."debit") FILTER(WHERE je."businessDate" < ${dateFrom}::date), 0)
+      END "amount"
+      FROM "Account" a
+      LEFT JOIN "JournalLine" jl ON jl."accountId"=a.id
+      LEFT JOIN "JournalEntry" je ON je.id=jl."journalEntryId" AND je.status IN ('POSTED','REVERSED')
+      WHERE a.id=${accountId}::uuid AND a."hotelId"=${hotelId}::uuid
+      GROUP BY a."normalBalance"
+    `);
+    return rows[0]?.amount ?? new Prisma.Decimal(0);
   }
 
   private ledgerFilters(query: GeneralLedgerQueryDto, hotelId: string) {
@@ -241,7 +385,15 @@ export class AccountingReportsService {
     return Prisma.join(conditions, ' AND ');
   }
 
-  private accountBalances(hotelId: string, dateFrom: string, dateTo: string, types: string[]) {
+  private accountBalances(
+    hotelId: string,
+    dateFrom: string | null,
+    dateTo: string,
+    types: string[],
+  ) {
+    const dateFilter = dateFrom
+      ? Prisma.sql`AND je."businessDate">=${dateFrom}::date AND je."businessDate"<=${dateTo}::date`
+      : Prisma.sql`AND je."businessDate"<=${dateTo}::date`;
     return this.prisma.$queryRaw<
       Array<{
         accountId: string;
@@ -258,7 +410,7 @@ export class AccountingReportsService {
       FROM "Account" a
       LEFT JOIN "JournalLine" jl ON jl."accountId"=a.id
       LEFT JOIN "JournalEntry" je ON je.id=jl."journalEntryId" AND je.status IN ('POSTED','REVERSED')
-        AND je."businessDate">=${dateFrom}::date AND je."businessDate"<=${dateTo}::date
+        AND je."businessDate"<=${dateTo}::date ${dateFilter}
       WHERE a."hotelId"=${hotelId}::uuid AND a.type::text IN (${Prisma.join(types)})
       GROUP BY a.id ORDER BY a.code
     `);
@@ -276,6 +428,29 @@ export class AccountingReportsService {
       accountName: row.accountName,
       balance: row.balance.toFixed(4),
     };
+  }
+
+  private toDecimal(value: unknown): Prisma.Decimal {
+    if (value instanceof Prisma.Decimal) return value;
+    if (typeof value === 'bigint') return new Prisma.Decimal(value.toString());
+    if (typeof value === 'number') return new Prisma.Decimal(value);
+    if (typeof value === 'string') return new Prisma.Decimal(value);
+    return new Prisma.Decimal(0);
+  }
+
+  private netToDirection(
+    net: Prisma.Decimal,
+    normalBalance: 'DEBIT' | 'CREDIT',
+  ): { debit: Prisma.Decimal; credit: Prisma.Decimal } {
+    const zero = new Prisma.Decimal(0);
+    if (normalBalance === 'DEBIT') {
+      return net.gte(zero)
+        ? { debit: net, credit: zero }
+        : { debit: zero, credit: net.abs() };
+    }
+    return net.lte(zero)
+      ? { debit: zero, credit: net.abs() }
+      : { debit: net, credit: zero };
   }
 
   private validateDates(from: string, to: string) {

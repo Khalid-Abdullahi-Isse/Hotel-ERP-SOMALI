@@ -6,7 +6,7 @@ The project is being built as a practical alternative for businesses that cannot
 
 The system focuses on the features hotels actually need: reservations, guests, rooms, payments, expenses, staff operations, reporting, and reliable business data — without unnecessary enterprise complexity.
 
----
+
 
 ## Project Vision
 
@@ -1052,8 +1052,10 @@ npm run start:dev
 Typical development API:
 
 ```text
-http://localhost:3001
+http://localhost:3005
 ```
+
+The backend Docker stack exposes the API on port 3005 to avoid collisions with other local services that commonly use 3001.
 
 ---
 

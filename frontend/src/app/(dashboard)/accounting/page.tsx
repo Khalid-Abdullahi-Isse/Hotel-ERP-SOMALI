@@ -9,10 +9,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PERMISSIONS } from "@/constants/permissions";
-import {
+import getBalanceSheet, {
   getAccountingAccounts,
   getAccountingSettings,
-  getBalanceSheet,
   getJournalEntries,
   getProfitLoss,
 } from "@/services/accounting.server";
@@ -34,7 +33,7 @@ export default async function AccountingPage() {
   const settings = await getAccountingSettings();
   if (!settings) return <div className="space-y-6"><PageHeader title="Accounting" description="Double-entry accounting for hotel operations, controls, and financial statements." actions={<Button asChild><Link href="/accounting/settings"><Settings2 />Open setup</Link></Button>} /><AccountingNav /><Card className="border-dashed"><CardContent className="flex min-h-80 flex-col items-center justify-center px-6 text-center"><div className="grid size-14 place-items-center rounded-2xl bg-primary/10 text-primary"><BookOpen className="size-6" /></div><h2 className="mt-5 text-xl font-semibold">Accounting is ready to be initialized</h2><p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">Create the standard chart of accounts and journals, then verify the operational mappings before your first posting.</p><Button className="mt-6" asChild><Link href="/accounting/settings">Set up accounting <ArrowRight /></Link></Button></CardContent></Card></div>;
   const [accounts, profitLoss, balanceSheet, entries] = await Promise.all([
-    getAccountingAccounts({ page: 1 }), getProfitLoss(period.dateFrom, period.dateTo), getBalanceSheet(period.dateTo), getJournalEntries({ page: 1 }),
+    getAccountingAccounts({ page: 1 }), getProfitLoss(period.dateFrom, period.dateTo), getBalanceSheet(period.dateFrom, period.dateTo), getJournalEntries({ page: 1 }),
   ]);
   const currency = profitLoss.report.currency;
   const metrics = [

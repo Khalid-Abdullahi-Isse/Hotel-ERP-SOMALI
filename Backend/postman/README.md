@@ -10,7 +10,9 @@ Select **Somali Hotel ERP - Local**, then set:
 - `adminIdentifier` to the bootstrapped ADMIN email or username
 - `adminPassword` to the bootstrap password
 - `monitoringToken` to the backend `MONITORING_TOKEN`
-- `baseUrl` only if the API is not at `http://localhost:3001/api/v1`
+- `baseUrl` only if the API is not at `http://localhost:3005/api/v1`
+
+The local Docker stack uses non-conflicting host ports: API on `3005`, Postgres on `5433`, and Redis on `6380`.
 
 Run folders in numeric order. The Login requests save the JWT access token, and
 Postman's cookie jar retains the rotating HttpOnly refresh cookie. Create requests

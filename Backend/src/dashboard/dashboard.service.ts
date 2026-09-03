@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { PaymentKind, PaymentStatus, ReservationStatus } from '../generated/prisma/enums.js';
+import { PaymentStatus, ReservationStatus } from '../generated/prisma/enums.js';
 import { Prisma } from '../generated/prisma/client.js';
 import type { RequestUser } from '../auth/auth.types.js';
 import { currentDateInTimeZone } from '../common/dates/stay-dates.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+
 @Injectable()
 export class DashboardService {
   constructor(private readonly prisma: PrismaService) {}
@@ -13,17 +14,23 @@ export class DashboardService {
       select: { timezone: true, currencyCode: true },
     });
     const today = currentDateInTimeZone(hotel.timezone);
+    const receivableAccount = await this.prisma.accountingSettings.findFirst({
+      where: { hotelId: actor.hotelId },
+      select: { defaultGuestReceivableAccountId: true },
+    });
+    const receivableAccountId = receivableAccount?.defaultGuestReceivableAccountId ?? null;
     const [
       rooms,
       currentGuests,
       arrivals,
       departures,
       payments,
-      expenses,
-      outstanding,
       housekeeping,
       maintenance,
       byMethod,
+      ledgerRevenue,
+      ledgerExpense,
+      ledgerOutstanding,
     ] = await Promise.all([
       this.prisma.room.groupBy({
         by: ['status'],
@@ -50,17 +57,6 @@ export class DashboardService {
       this.prisma.$queryRaw<
         Array<{ paid: string; refunded: string }>
       >`SELECT coalesce(sum("amount") FILTER (WHERE "kind"='PAYMENT'),0)::text paid, coalesce(sum("amount") FILTER (WHERE "kind"='REFUND'),0)::text refunded FROM "Payment" WHERE "hotelId"=${actor.hotelId}::uuid AND "status"=${PaymentStatus.COMPLETED}::"PaymentStatus" AND ("paidAt" AT TIME ZONE ${hotel.timezone})::date=${today}::date`,
-      this.prisma.expense.aggregate({
-        where: {
-          hotelId: actor.hotelId,
-          expenseDate: new Date(`${today}T00:00:00.000Z`),
-          reversedAt: null,
-        },
-        _sum: { amount: true },
-      }),
-      this.prisma.$queryRaw<
-        Array<{ amount: string }>
-      >`SELECT coalesce(sum(greatest(i."totalAmount" - coalesce(p.net,0),0)),0)::text amount FROM "Invoice" i LEFT JOIN (SELECT "reservationId", sum(CASE WHEN "kind"=${PaymentKind.PAYMENT}::"PaymentKind" THEN "amount" ELSE -"amount" END) net FROM "Payment" WHERE "status"=${PaymentStatus.COMPLETED}::"PaymentStatus" GROUP BY "reservationId") p ON p."reservationId"=i."reservationId" WHERE i."hotelId"=${actor.hotelId}::uuid AND i."status"<>'VOIDED'`,
       this.prisma.housekeepingTask.groupBy({
         by: ['status'],
         where: { hotelId: actor.hotelId, status: { not: 'COMPLETED' } },
@@ -74,11 +70,20 @@ export class DashboardService {
       this.prisma.$queryRaw<
         Array<{ name: string; amount: string }>
       >`SELECT pm.name, coalesce(sum(CASE WHEN p.kind='PAYMENT' THEN p.amount ELSE -p.amount END),0)::text amount FROM "Payment" p JOIN "PaymentMethod" pm ON pm.id=p."paymentMethodId" WHERE p."hotelId"=${actor.hotelId}::uuid AND p.status='COMPLETED' AND (p."paidAt" AT TIME ZONE ${hotel.timezone})::date=${today}::date GROUP BY pm.id,pm.name ORDER BY pm.name`,
+      this.prisma.$queryRaw<
+        Array<{ amount: string }>
+      >`SELECT coalesce(sum(jl.credit-jl.debit),0)::text amount FROM "JournalLine" jl JOIN "JournalEntry" je ON je.id=jl."journalEntryId" JOIN "Account" a ON a.id=jl."accountId" WHERE je."hotelId"=${actor.hotelId}::uuid AND je.status='POSTED' AND je."businessDate"=${today}::date AND a.type='REVENUE'`,
+      this.prisma.$queryRaw<
+        Array<{ amount: string }>
+      >`SELECT coalesce(sum(jl.debit-jl.credit),0)::text amount FROM "JournalLine" jl JOIN "JournalEntry" je ON je.id=jl."journalEntryId" JOIN "Account" a ON a.id=jl."accountId" WHERE je."hotelId"=${actor.hotelId}::uuid AND je.status='POSTED' AND je."businessDate"=${today}::date AND a.type='EXPENSE'`,
+      this.prisma.$queryRaw<
+        Array<{ amount: string }>
+      >`SELECT coalesce(sum(jl.debit-jl.credit),0)::text amount FROM "JournalLine" jl JOIN "JournalEntry" je ON je.id=jl."journalEntryId" WHERE je."hotelId"=${actor.hotelId}::uuid AND je.status IN ('POSTED','REVERSED') AND je."businessDate"<=${today}::date AND jl."accountId"=${receivableAccountId}::uuid`,
     ]);
     const paid = payments[0]?.paid ?? '0';
     const refunded = payments[0]?.refunded ?? '0';
-    const revenue = new Prisma.Decimal(paid).minus(refunded);
-    const expense = expenses._sum.amount?.toString() ?? '0';
+    const revenue = new Prisma.Decimal(ledgerRevenue[0]?.amount ?? '0');
+    const expense = new Prisma.Decimal(ledgerExpense[0]?.amount ?? '0');
     return {
       generatedAt: new Date().toISOString(),
       businessDate: today,
@@ -93,9 +98,9 @@ export class DashboardService {
         payments: paid,
         refunds: refunded,
         revenue: revenue.toFixed(2),
-        expenses: expense,
+        expenses: expense.toFixed(2),
         net: revenue.minus(expense).toFixed(2),
-        outstanding: outstanding[0]?.amount ?? '0',
+        outstanding: ledgerOutstanding[0]?.amount ?? '0',
         byPaymentMethod: byMethod,
       },
       operations: {

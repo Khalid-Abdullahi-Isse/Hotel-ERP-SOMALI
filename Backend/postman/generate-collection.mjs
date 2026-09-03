@@ -613,7 +613,7 @@ const environment = {
   id: 'b071e9ba-f1f5-45cc-a2da-46f7b49c3787',
   name: 'Somali Hotel ERP - Local',
   values: [
-    { key: 'baseUrl', value: 'http://localhost:3001/api/v1', type: 'default', enabled: true },
+    { key: 'baseUrl', value: 'http://localhost:3005/api/v1', type: 'default', enabled: true },
     { key: 'adminIdentifier', value: 'admin@example.com', type: 'default', enabled: true },
     {
       key: 'adminPassword',

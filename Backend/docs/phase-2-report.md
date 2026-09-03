@@ -77,7 +77,7 @@ protection, and last-admin protection.
 4. Set the six `BOOTSTRAP_*` variables described in `.env.example`.
 5. Create the first hotel/admin: `npm run bootstrap:admin`.
 6. Start the API: `npm run start:dev`.
-7. Open Swagger at `http://localhost:3001/docs`.
+7. Open Swagger at `http://localhost:3005/docs`.
 
 The development database was left empty after testing, ready for the real hotel
 bootstrap. No test credentials remain.

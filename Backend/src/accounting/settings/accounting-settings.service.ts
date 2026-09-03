@@ -89,6 +89,14 @@ export class AccountingSettingsService {
         include: SETTINGS_INCLUDE,
       });
       if (existing) {
+        await this.ensureDefaultAccounts(tx, actor.hotelId, existing);
+        for (const [code, name, type] of DEFAULT_JOURNALS) {
+          await tx.accountingJournal.upsert({
+            where: { hotelId_code: { hotelId: actor.hotelId, code } },
+            update: { isActive: true },
+            create: { hotelId: actor.hotelId, code, name, type },
+          });
+        }
         await this.mapKnownPaymentMethods(
           tx,
           actor.hotelId,
@@ -279,6 +287,47 @@ export class AccountingSettingsService {
           data: { ledgerAccountId: match[1] },
         });
       }
+    }
+  }
+
+  private async ensureDefaultAccounts(
+    tx: Prisma.TransactionClient,
+    hotelId: string,
+    settings: Prisma.AccountingSettingsGetPayload<null>,
+  ) {
+    const hotel = await tx.hotel.findUniqueOrThrow({ where: { id: hotelId }, select: { currencyCode: true } });
+    const accounts = await tx.account.findMany({ where: { hotelId }, select: { id: true, code: true } });
+    const byCode = new Map(accounts.map((account) => [account.code, account.id]));
+    const missing = DEFAULT_ACCOUNTS.filter(([code]) => !byCode.has(code));
+    for (const [code, name, type, normalBalance, parentCode, allowManualPosting] of missing) {
+      const account = await tx.account.create({
+        data: {
+          hotelId, code, name, type, normalBalance,
+          parentAccountId: parentCode ? byCode.get(parentCode) : undefined,
+          currency: hotel.currencyCode, allowManualPosting,
+        },
+        select: { id: true },
+      });
+      byCode.set(code, account.id);
+    }
+    const mappings = {
+      defaultRoomRevenueAccountId: byCode.get('4100'),
+      defaultGuestReceivableAccountId: byCode.get('1200'),
+      defaultCashAccountId: byCode.get('1110'),
+      defaultBankAccountId: byCode.get('1120'),
+      defaultMobileMoneyAccountId: byCode.get('1130'),
+      defaultDepositAccountId: byCode.get('2200'),
+      defaultTaxPayableAccountId: byCode.get('2300'),
+      defaultServiceRevenueAccountId: byCode.get('4500'),
+      defaultDiscountAccountId: byCode.get('4090'),
+      defaultExpenseAccountId: byCode.get('6900'),
+      defaultAccountsPayableAccountId: byCode.get('2100'),
+    };
+    const updates = Object.fromEntries(
+      Object.entries(mappings).filter(([field, value]) => value && !settings[field as keyof typeof settings]),
+    );
+    if (Object.keys(updates).length) {
+      await tx.accountingSettings.update({ where: { hotelId }, data: updates });
     }
   }
 

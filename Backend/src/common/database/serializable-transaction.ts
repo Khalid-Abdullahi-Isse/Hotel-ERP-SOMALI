@@ -15,6 +15,7 @@ export async function runSerializable<T>(
       });
     } catch (error) {
       finalError = error;
+      finalError = error;
       if (!hasErrorMarker(error, ['P2034', '40001', '40P01']) || attempt === 2) throw error;
     }
   }

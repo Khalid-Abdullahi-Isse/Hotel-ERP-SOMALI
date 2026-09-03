@@ -208,6 +208,48 @@ export class GuestAccountingService {
     return { accountingEnabled: true };
   }
 
+  async postDiscount(
+    discount: MoneyEvent,
+    amount: Prisma.Decimal,
+    actor: RequestUser,
+    tx: Prisma.TransactionClient,
+  ) {
+    if (amount.isZero()) return { accountingEnabled: true };
+    const context = await this.context(actor.hotelId, tx);
+    if (!context) return { accountingEnabled: false };
+    const discountAccountId = context.settings.defaultDiscountAccountId;
+    if (!discountAccountId) {
+      throw new ConflictException({
+        code: 'DISCOUNT_LEDGER_ACCOUNT_NOT_CONFIGURED',
+        message: 'Configure the default discount account before posting discounts.',
+      });
+    }
+    await this.posting.postEvent(
+      {
+        hotelId: actor.hotelId,
+        actorId: actor.id,
+        journalId: context.salesJournalId,
+        businessDate: this.date(discount.occurredAt),
+        sourceType: 'GUEST_DISCOUNT',
+        sourceId: discount.id,
+        reference: discount.reference ?? undefined,
+        description: discount.description,
+        lines: [
+          this.line(discountAccountId, amount, true, discount.reservationId, discount.description),
+          this.line(
+            context.settings.defaultGuestReceivableAccountId,
+            amount,
+            false,
+            discount.reservationId,
+            discount.description,
+          ),
+        ],
+      },
+      tx,
+    );
+    return { accountingEnabled: true };
+  }
+
   async postRefund(
     refund: MoneyEvent & { paymentAccountId?: string | null },
     actor: RequestUser,

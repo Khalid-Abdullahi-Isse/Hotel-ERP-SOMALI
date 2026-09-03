@@ -6,6 +6,8 @@ import { RoomsService } from '../../rooms/rooms.service.js';
 import type { PrismaService } from '../../prisma/prisma.service.js';
 import type { AvailabilityService } from '../../availability/availability.service.js';
 import type { ChargesService } from '../../charges/charges.service.js';
+import type { GuestsService } from '../../guests/guests.service.js';
+import type { GuestAccountingService } from '../../accounting/guest-accounting.service.js';
 
 jest.mock('../../generated/prisma/client.js', () => ({ Prisma: {} }));
 jest.mock('../../prisma/prisma.service.js', () => ({ PrismaService: class {} }));
@@ -44,7 +46,12 @@ describe('representative paginated modules', () => {
 
   it('scopes and filters reservations before applying page 2', async () => {
     const { prisma, delegate } = database('reservation', 7);
-    const service = new ReservationsService(prisma, {} as AvailabilityService, audits);
+    const service = new ReservationsService(
+      prisma,
+      {} as AvailabilityService,
+      audits,
+      {} as GuestsService,
+    );
     const result = await service.list({ page: 2, limit: 30, search: 'Ahmed', status: 'CONFIRMED' }, actor);
     const call = (delegate.findMany.mock.calls as unknown as Array<[QueryCall]>)[0][0];
     expect(call.where).toMatchObject({ hotelId: actor.hotelId, status: 'CONFIRMED' });
@@ -77,7 +84,12 @@ describe('representative paginated modules', () => {
 
   it('searches and counts payments inside the authenticated hotel', async () => {
     const { prisma, delegate } = database('payment', 12);
-    const service = new PaymentsService(prisma, {} as ChargesService, audits);
+    const service = new PaymentsService(
+      prisma,
+      {} as ChargesService,
+      audits,
+      {} as GuestAccountingService,
+    );
     const result = await service.list({ page: 1, limit: 30, search: 'Ahmed' }, actor);
     const call = (delegate.findMany.mock.calls as unknown as Array<[QueryCall]>)[0][0];
     expect(call.where.hotelId).toBe(actor.hotelId);

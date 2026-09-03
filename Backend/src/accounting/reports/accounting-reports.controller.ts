@@ -1,4 +1,4 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Param, ParseUUIDPipe, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { PERMISSIONS } from '../../auth/auth.constants.js';
 import type { RequestUser } from '../../auth/auth.types.js';
@@ -7,6 +7,7 @@ import { RequirePermissions } from '../../common/decorators/permissions.decorato
 import { AccountingReportsService } from './accounting-reports.service.js';
 import {
   AccountingReportQueryDto,
+  BalanceSheetQueryDto,
   GeneralLedgerQueryDto,
 } from './dto/accounting-report-query.dto.js';
 
@@ -33,7 +34,16 @@ export class AccountingReportsController {
   }
 
   @Get('balance-sheet')
-  balanceSheet(@Query() query: AccountingReportQueryDto, @CurrentUser() actor: RequestUser) {
+  balanceSheet(@Query() query: BalanceSheetQueryDto, @CurrentUser() actor: RequestUser) {
     return this.reports.balanceSheet(query, actor);
+  }
+
+  @Get('account-statement/:accountId')
+  accountStatement(
+    @Param('accountId', new ParseUUIDPipe({ version: '4' })) accountId: string,
+    @Query() query: GeneralLedgerQueryDto,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    return this.reports.accountStatement(query, accountId, actor);
   }
 }

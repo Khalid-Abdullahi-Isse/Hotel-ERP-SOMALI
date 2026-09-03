@@ -90,7 +90,7 @@ export class TenantHttpCacheInterceptor implements NestInterceptor {
 
   private async safeGet<T>(key: string): Promise<T | undefined> {
     try {
-      return await this.cache.get<T>(key);
+      return await this.withTimeout(this.cache.get<T>(key));
     } catch (error) {
       this.logger.warn({ error, key }, 'Redis cache read failed; continuing without cache');
       return undefined;
@@ -103,10 +103,26 @@ export class TenantHttpCacheInterceptor implements NestInterceptor {
     ttl: number | undefined = this.ttl,
   ): Promise<void> {
     try {
-      if (ttl === undefined) await this.cache.set(key, value);
-      else await this.cache.set(key, value, ttl);
+      if (ttl === undefined) await this.withTimeout(this.cache.set(key, value));
+      else await this.withTimeout(this.cache.set(key, value, ttl));
     } catch (error) {
       this.logger.warn({ error, key }, 'Redis cache write failed; continuing without cache');
     }
+  }
+
+  private withTimeout<T>(promise: Promise<T>, ms = 500): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('redis-cache-timeout')), ms);
+      promise.then(
+        (value) => {
+          clearTimeout(timer);
+          resolve(value);
+        },
+        (error) => {
+          clearTimeout(timer);
+          reject(error);
+        },
+      );
+    });
   }
 }

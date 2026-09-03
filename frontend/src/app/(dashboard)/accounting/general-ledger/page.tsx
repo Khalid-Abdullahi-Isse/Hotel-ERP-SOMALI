@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import { AccountingNav } from "@/components/accounting/accounting-nav";
-import { accountingPeriod } from "@/lib/accounting";
+import {
+  accountingMoney,
+  accountingPeriod,
+  normalizeAccountingDate,
+} from "@/lib/accounting";
 import { ReportPeriod } from "@/components/accounting/report-period";
 import { ListToolbar } from "@/components/shared/list-toolbar";
 import { PageHeader } from "@/components/shared/page-header";
@@ -30,14 +34,15 @@ export default async function GeneralLedgerPage({
 }) {
   const params = await searchParams;
   const defaults = accountingPeriod();
-  const dateFrom = params.dateFrom ?? defaults.dateFrom;
-  const dateTo = params.dateTo ?? defaults.dateTo;
+  const dateFrom = normalizeAccountingDate(params.dateFrom, defaults.dateFrom);
+  const dateTo = normalizeAccountingDate(params.dateTo, defaults.dateTo);
   const ledger = await getGeneralLedger({
     page: parsePage(params.page),
     search: params.search,
     dateFrom,
     dateTo,
   });
+  const currency = ledger.report.currency;
   return (
     <div className="space-y-6">
       <PageHeader
@@ -78,13 +83,13 @@ export default async function GeneralLedgerPage({
                   {row.description}
                 </TableCell>
                 <TableCell className="text-right font-mono tabular-nums">
-                  {row.debit}
+                  {accountingMoney(row.debit, currency)}
                 </TableCell>
                 <TableCell className="text-right font-mono tabular-nums">
-                  {row.credit}
+                  {accountingMoney(row.credit, currency)}
                 </TableCell>
                 <TableCell className="text-right font-mono font-medium tabular-nums">
-                  {row.runningBalance}
+                  {accountingMoney(row.runningBalance, currency)}
                 </TableCell>
               </TableRow>
             ))}

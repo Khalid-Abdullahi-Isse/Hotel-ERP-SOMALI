@@ -16,14 +16,17 @@ export class PermissionsGuard implements CanActivate {
       context.getClass(),
     ]);
     if (isPublic) return true;
-    const required = this.reflector.getAllAndOverride<PermissionKey[]>(REQUIRED_PERMISSIONS_KEY, [
+    const required = this.reflector.getAllAndOverride<PermissionKey[] | { any: PermissionKey[] }>(REQUIRED_PERMISSIONS_KEY, [
       context.getHandler(),
       context.getClass(),
     ]);
-    if (!required?.length) return true;
+    if (!required || (Array.isArray(required) && !required.length) || (!Array.isArray(required) && !required.any.length)) return true;
 
     const user = context.switchToHttp().getRequest<Request & { user?: RequestUser }>().user;
-    if (!user || !required.every((permission) => user.permissions.includes(permission))) {
+    const allowed = Array.isArray(required)
+      ? required.every((permission) => user?.permissions.includes(permission))
+      : required.any.some((permission) => user?.permissions.includes(permission));
+    if (!user || !allowed) {
       throw new ForbiddenException({
         code: 'PERMISSION_DENIED',
         message: 'You do not have permission to perform this action.',

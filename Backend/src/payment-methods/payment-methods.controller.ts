@@ -3,7 +3,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { PERMISSIONS } from '../auth/auth.constants.js';
 import type { RequestUser } from '../auth/auth.types.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
-import { RequirePermissions } from '../common/decorators/permissions.decorator.js';
+import { RequireAnyPermission, RequirePermissions } from '../common/decorators/permissions.decorator.js';
 import { PaymentMethodDto } from './dto/payment-method.dto.js';
 import { PaymentMethodsService } from './payment-methods.service.js';
 
@@ -13,7 +13,7 @@ import { PaymentMethodsService } from './payment-methods.service.js';
 export class PaymentMethodsController {
   constructor(private readonly methods: PaymentMethodsService) {}
   @Get()
-  @RequirePermissions(PERMISSIONS.PAYMENT_VIEW)
+  @RequireAnyPermission(PERMISSIONS.PAYMENT_VIEW, PERMISSIONS.PAYMENT_CREATE)
   list(@CurrentUser() actor: RequestUser) {
     return this.methods.list(actor);
   }

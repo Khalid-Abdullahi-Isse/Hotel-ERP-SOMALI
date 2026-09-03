@@ -13,10 +13,12 @@ database-first V1 domain model.
 
 ## Local setup
 
+Use the Docker host ports below to avoid collisions with other local services already using the default ports.
+
 ```bash
 cp .env.example .env
 npm ci
-docker compose up -d postgres
+docker compose up -d postgres redis
 npm run db:deploy
 npm run prisma:generate
 npm run bootstrap:admin
@@ -25,9 +27,21 @@ npm run start:dev
 
 On PowerShell, use `Copy-Item .env.example .env` instead of `cp`.
 
-- API: `http://localhost:3001/api/v1/health/live`
-- Readiness: `http://localhost:3001/api/v1/health/ready`
-- Swagger: `http://localhost:3001/docs`
+Safe local ports for the Docker stack:
+
+- API: `http://localhost:3005/api/v1/health/live`
+- Readiness: `http://localhost:3005/api/v1/health/ready`
+- Swagger: `http://localhost:3005/docs`
+- Postgres: `localhost:5433`
+- Redis: `localhost:6380`
+
+If you run the backend outside Docker, keep the local `.env` values aligned with these host ports:
+
+- `PORT=3005`
+- `DATABASE_URL=postgresql://hotel_erp:change_me@localhost:5433/hotel_erp?schema=public`
+- `REDIS_URL=redis://127.0.0.1:6380`
+
+Do not reuse `3001`, `5432`, or `6379` while this stack is active because those ports are already commonly occupied and trigger the `EADDRINUSE` startup failure.
 
 ## Postman
 

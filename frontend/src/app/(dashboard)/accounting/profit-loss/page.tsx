@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { AccountingNav } from "@/components/accounting/accounting-nav";
-import { accountingMoney, accountingPeriod } from "@/lib/accounting";
+import { accountingMoney, accountingPeriod, normalizeAccountingDate } from "@/lib/accounting";
 import { BalanceTable } from "@/components/accounting/balance-table";
 import { ReportPeriod } from "@/components/accounting/report-period";
 import { PageHeader } from "@/components/shared/page-header";
@@ -15,8 +15,8 @@ export default async function ProfitLossPage({
 }) {
   const params = await searchParams;
   const defaults = accountingPeriod();
-  const dateFrom = params.dateFrom ?? defaults.dateFrom;
-  const dateTo = params.dateTo ?? defaults.dateTo;
+  const dateFrom = normalizeAccountingDate(params.dateFrom, defaults.dateFrom);
+  const dateTo = normalizeAccountingDate(params.dateTo, defaults.dateTo);
   const report = await getProfitLoss(dateFrom, dateTo);
   const currency = report.report.currency;
   return (

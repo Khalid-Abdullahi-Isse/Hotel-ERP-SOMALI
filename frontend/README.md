@@ -12,9 +12,11 @@ npm run dev
 The frontend runs at `http://localhost:3000`. Configure the separate backend URL in `.env.local`:
 
 ```env
-API_URL=http://localhost:3001/api/v1
-NEXT_PUBLIC_API_URL=http://localhost:3001/api/v1
+API_URL=http://localhost:3005/api/v1
+NEXT_PUBLIC_API_URL=http://localhost:3005/api/v1
 ```
+
+The backend Docker stack exposes the API on port `3005` to avoid `EADDRINUSE` conflicts from common local services already using `3001`.
 
 ## Expected backend contract
 

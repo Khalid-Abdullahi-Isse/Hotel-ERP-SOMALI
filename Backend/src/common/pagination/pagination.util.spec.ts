@@ -15,13 +15,13 @@ describe('pagination infrastructure', () => {
     expect(paginationOffset(3, 30)).toBe(60);
   });
 
-  it.each([
-    [{ page: 0 }, 'page zero'],
-    [{ page: -1 }, 'negative page'],
-    [{ limit: -1 }, 'negative limit'],
-    [{ limit: 101 }, 'limit above the maximum'],
-    [{ page: 'abc' }, 'non-numeric page'],
-  ])('rejects %s (%s)', async (input) => {
+  it.each<Record<string, unknown>>([
+    { page: 0 },
+    { page: -1 },
+    { limit: -1 },
+    { limit: 101 },
+    { page: 'abc' },
+  ])("rejects invalid pagination input %j", async (input) => {
     const query = plainToInstance(PaginationQueryDto, input);
     expect(await validate(query)).not.toHaveLength(0);
   });

@@ -10,8 +10,12 @@ import { AccountingReportsController } from './reports/accounting-reports.contro
 import { AccountingReportsService } from './reports/accounting-reports.service.js';
 import { AccountingSettingsController } from './settings/accounting-settings.controller.js';
 import { AccountingSettingsService } from './settings/accounting-settings.service.js';
+import { FiscalPeriodsController } from './fiscal-periods/fiscal-periods.controller.js';
+import { FiscalPeriodsService } from './fiscal-periods/fiscal-periods.service.js';
 import { GuestAccountingService } from './guest-accounting.service.js';
 import { ExpenseAccountingService } from './expense-accounting.service.js';
+import { NightAuditService } from './night-audit/night-audit.service.js';
+import { NightAuditController } from './night-audit/night-audit.controller.js';
 
 @Module({
   controllers: [
@@ -20,6 +24,8 @@ import { ExpenseAccountingService } from './expense-accounting.service.js';
     JournalEntriesController,
     AccountingReportsController,
     AccountingSettingsController,
+    FiscalPeriodsController,
+    NightAuditController,
   ],
   providers: [
     AccountsService,
@@ -28,14 +34,18 @@ import { ExpenseAccountingService } from './expense-accounting.service.js';
     AccountingPostingService,
     AccountingReportsService,
     AccountingSettingsService,
+    FiscalPeriodsService,
     GuestAccountingService,
     ExpenseAccountingService,
+    NightAuditService,
   ],
   exports: [
     AccountingPostingService,
     AccountingSettingsService,
+    FiscalPeriodsService,
     GuestAccountingService,
     ExpenseAccountingService,
+    NightAuditService,
   ],
 })
 export class AccountingModule {}
