@@ -86,17 +86,17 @@ export function ExpenseForm({
   const [open, setOpen] = useState(false);
 
   const mutation = useMutation({
-  mutationFn: (input: ExpenseFormValues) =>
-    expensesService.create({
-      categoryId: input.categoryId,
-      amount: input.amount,
-      expenseDate: input.expenseDate,
-      requestKey: generateUUID(),
-      paymentMethodId: input.paymentMethodId || undefined,
-      reference: input.reference || undefined,
-      invoiceNumber: input.invoiceNumber || undefined,
-      dueDate: input.dueDate || undefined,
-    }),
+    mutationFn: (input: ExpenseFormValues) =>
+      expensesService.create({
+        categoryId: input.categoryId,
+        amount: input.amount,
+        expenseDate: input.expenseDate,
+        requestKey: generateUUID(),
+        paymentMethodId: input.paymentMethodId || undefined,
+        reference: input.reference || undefined,
+        invoiceNumber: input.invoiceNumber || undefined,
+        dueDate: input.dueDate || undefined,
+      }),
     onSuccess: () => {
       setOpen(false);
       router.refresh();
