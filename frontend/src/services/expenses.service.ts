@@ -6,7 +6,6 @@ export interface CreateExpenseInput {
   requestKey: string;
   amount: string;
   expenseDate: string;
-  description: string;
   reference?: string;
   invoiceNumber?: string;
   dueDate?: string;

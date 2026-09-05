@@ -24,7 +24,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { ErrorMessage } from "@/components/shared/error-message";
 import { expensesService } from "@/services/expenses.service";
 import { getApiError } from "@/lib/api-error";
@@ -35,21 +34,34 @@ import type {
   ApiPaymentMethod,
 } from "@/types/api-contracts";
 
+
+
+
 const expenseSchema = z.object({
   categoryId: z.string().min(1, "Select a category."),
+
   amount: z
     .string()
     .min(1, "Amount is required.")
-    .refine((v) => !isNaN(Number(v)) && Number(v) > 0, "Amount must be greater than zero."),
+    .refine(
+      (v) => !isNaN(Number(v)) && Number(v) > 0,
+      "Amount must be greater than zero.",
+    ),
+
   expenseDate: z.string().min(1, "Date is required."),
-  description: z
+
+  paymentMethodId: z.string().optional(),
+
+  reference: z
     .string()
     .trim()
-    .min(2, "Description is required.")
-    .max(500, "Description is too long."),
-  paymentMethodId: z.string().optional(),
-  reference: z.string().trim().max(100).optional(),
-  invoiceNumber: z.string().trim().max(100).optional(),
+    .optional(),
+
+  invoiceNumber: z
+    .string()
+    .trim()
+    .optional(),
+
   dueDate: z.string().optional(),
 });
 
@@ -74,18 +86,17 @@ export function ExpenseForm({
   const [open, setOpen] = useState(false);
 
   const mutation = useMutation({
-    mutationFn: (input: ExpenseFormValues) =>
-      expensesService.create({
-        categoryId: input.categoryId,
-        amount: input.amount,
-        expenseDate: input.expenseDate,
-        description: input.description,
-        requestKey: generateUUID(),
-        paymentMethodId: input.paymentMethodId || undefined,
-        reference: input.reference || undefined,
-        invoiceNumber: input.invoiceNumber || undefined,
-        dueDate: input.dueDate || undefined,
-      }),
+  mutationFn: (input: ExpenseFormValues) =>
+    expensesService.create({
+      categoryId: input.categoryId,
+      amount: input.amount,
+      expenseDate: input.expenseDate,
+      requestKey: generateUUID(),
+      paymentMethodId: input.paymentMethodId || undefined,
+      reference: input.reference || undefined,
+      invoiceNumber: input.invoiceNumber || undefined,
+      dueDate: input.dueDate || undefined,
+    }),
     onSuccess: () => {
       setOpen(false);
       router.refresh();
@@ -104,7 +115,6 @@ export function ExpenseForm({
       categoryId: "",
       amount: "",
       expenseDate: new Date().toISOString().split("T")[0],
-      description: "",
       paymentMethodId: "",
       reference: "",
       invoiceNumber: "",
@@ -215,23 +225,6 @@ export function ExpenseForm({
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="expense-description">
-              Description <span className="text-destructive">*</span>
-            </Label>
-            <Textarea
-              id="expense-description"
-              placeholder="What was this expense for?"
-              rows={3}
-              aria-invalid={Boolean(errors.description)}
-              {...register("description")}
-            />
-            {errors.description ? (
-              <p className="text-sm text-destructive">
-                {errors.description.message}
-              </p>
-            ) : null}
-          </div>
 
           <div className="space-y-2">
             <Label htmlFor="expense-payment-method">Payment method</Label>
