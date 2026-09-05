@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Banknote, CreditCard, Landmark, Smartphone } from "lucide-react";
 import {
   Table,
@@ -41,7 +42,9 @@ export function PaymentsTable({ payments }: { payments: PaymentRecord[] }) {
               return (
                 <TableRow key={payment.id}>
                   <TableCell className="font-mono text-xs text-primary">
-                    {payment.reference}
+                    <Link href={`/payments/${payment.id}`} className="hover:underline">
+                      {payment.reference}
+                    </Link>
                   </TableCell>
                   <TableCell className="whitespace-nowrap text-xs">
                     {formatShortDate(payment.date)}
@@ -79,7 +82,9 @@ export function PaymentsTable({ payments }: { payments: PaymentRecord[] }) {
                 <div>
                   <p className="font-medium">{payment.guestName}</p>
                   <p className="mt-1 font-mono text-[11px] text-primary">
-                    {payment.reference}
+                    <Link href={`/payments/${payment.id}`} className="hover:underline">
+                      {payment.reference}
+                    </Link>
                   </p>
                 </div>
                 <p className="font-semibold tabular-nums">

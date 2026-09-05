@@ -1,6 +1,7 @@
 import { api } from "@/lib/api";
 import type {
   ApiFloor,
+  ApiMaintenancePriority,
   ApiMaintenanceRequest,
   ApiPaymentMethod,
   ApiRoomType,
@@ -48,10 +49,28 @@ export const paymentMethodService = {
 };
 
 export const maintenanceService = {
-  create: async (input: { roomId: string; problem: string; assignedToId?: string; notes?: string }) =>
-    (await api.post<ApiMaintenanceRequest>("/maintenance/requests", input)).data,
+  create: async (input: {
+    roomId: string;
+    problem: string;
+    assignedToId?: string;
+    notes?: string;
+    category?: string;
+    priority?: ApiMaintenancePriority;
+  }) => (await api.post<ApiMaintenanceRequest>("/maintenance/requests", input)).data,
+  assign: async (id: string, assignedToId: string) =>
+    (await api.post<ApiMaintenanceRequest>(`/maintenance/requests/${id}/assign`, { assignedToId })).data,
   start: async (id: string) =>
     (await api.post<ApiMaintenanceRequest>(`/maintenance/requests/${id}/start`)).data,
+  hold: async (id: string, reason?: string) =>
+    (await api.post<ApiMaintenanceRequest>(`/maintenance/requests/${id}/hold`, { reason })).data,
+  resume: async (id: string) =>
+    (await api.post<ApiMaintenanceRequest>(`/maintenance/requests/${id}/resume`)).data,
   complete: async (id: string, input: { cost?: string; notes?: string }) =>
     (await api.post<ApiMaintenanceRequest>(`/maintenance/requests/${id}/complete`, input)).data,
+  verify: async (id: string) =>
+    (await api.post<ApiMaintenanceRequest>(`/maintenance/requests/${id}/verify`)).data,
+  close: async (id: string, notes?: string) =>
+    (await api.post<ApiMaintenanceRequest>(`/maintenance/requests/${id}/close`, { notes })).data,
+  cancel: async (id: string, reason: string) =>
+    (await api.post<ApiMaintenanceRequest>(`/maintenance/requests/${id}/cancel`, { reason })).data,
 };

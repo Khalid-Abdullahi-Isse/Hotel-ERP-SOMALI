@@ -23,4 +23,7 @@ export class CreateExpenseDto {
   @ApiProperty({ example: '2026-08-17' }) @IsDateString({ strict: true }) expenseDate!: string;
   @ApiProperty() @IsString() @MinLength(2) @MaxLength(255) description!: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(120) reference?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(120) invoiceNumber?: string;
+  @ApiPropertyOptional({ example: '2026-09-15' })
+  @IsOptional() @IsDateString({ strict: true }) dueDate?: string;
 }

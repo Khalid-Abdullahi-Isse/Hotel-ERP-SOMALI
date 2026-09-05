@@ -64,8 +64,29 @@ enum HousekeepingStatus {
 
 enum MaintenanceStatus {
   OPEN
+  ASSIGNED
   IN_PROGRESS
-  DONE
+  ON_HOLD
+  COMPLETED
+  VERIFIED
+  CLOSED
+  CANCELLED
+}
+
+enum MaintenancePriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum ExpenseStatus {
+  DRAFT
+  SUBMITTED
+  PENDING_APPROVAL
+  APPROVED
+  PAID
+  REJECTED
 }
 
 enum AccountType {
@@ -157,9 +178,16 @@ model User {
   roles                  UserRole[]
   authSessions           AuthSession[]
   createdExpenses        Expense[]
+  approvedExpenses       Expense[]            @relation("ExpenseApprover")
+  paidExpenses           Expense[]            @relation("ExpensePayer")
+  rejectedExpenses       Expense[]            @relation("ExpenseRejecter")
   assignedHousekeeping   HousekeepingTask[]   @relation("HousekeepingAssignee")
   assignedMaintenance    MaintenanceRequest[] @relation("MaintenanceAssignee")
   createdMaintenance     MaintenanceRequest[] @relation("MaintenanceCreator")
+  completedMaintenance   MaintenanceRequest[] @relation("MaintenanceCompleter")
+  verifiedMaintenance    MaintenanceRequest[] @relation("MaintenanceVerifier")
+  closedMaintenance      MaintenanceRequest[] @relation("MaintenanceCloser")
+  cancelledMaintenance   MaintenanceRequest[] @relation("MaintenanceCanceller")
   reservationEvents      ReservationHistory[]
   createdPayments        Payment[]            @relation("PaymentCreator")
   voidedCharges          Charge[]             @relation("ChargeVoider")
@@ -596,25 +624,45 @@ model Expense {
   paymentMethodId String?         @db.Uuid
   createdById     String          @db.Uuid
   requestKey      String          @db.Uuid
+  status          ExpenseStatus   @default(DRAFT)
   amount          Decimal         @db.Decimal(14, 2)
   expenseDate     DateTime        @db.Date
   description     String          @db.VarChar(255)
   reference       String?         @db.VarChar(120)
+  invoiceNumber   String?         @db.VarChar(120)
+  dueDate         DateTime?       @db.Date
+  submittedAt     DateTime?       @db.Timestamptz(3)
+  approvedAt      DateTime?       @db.Timestamptz(3)
+  approvedById    String?         @db.Uuid
+  paidAt          DateTime?       @db.Timestamptz(3)
+  paidById        String?         @db.Uuid
+  rejectedAt      DateTime?       @db.Timestamptz(3)
+  rejectedById    String?         @db.Uuid
+  rejectionReason String?         @db.VarChar(500)
+  reversalReason  String?
   reversedAt      DateTime?       @db.Timestamptz(3)
   reversedById    String?         @db.Uuid
-  reversalReason  String?
+  maintenanceId   String?         @unique @db.Uuid
   createdAt       DateTime        @default(now()) @db.Timestamptz(3)
   updatedAt       DateTime        @updatedAt @db.Timestamptz(3)
   hotel           Hotel           @relation(fields: [hotelId], references: [id], onDelete: Restrict)
   category        ExpenseCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   paymentMethod   PaymentMethod?  @relation(fields: [paymentMethodId], references: [id], onDelete: Restrict)
   createdBy       User            @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  approvedBy      User?           @relation("ExpenseApprover", fields: [approvedById], references: [id], onDelete: Restrict)
+  paidBy          User?           @relation("ExpensePayer", fields: [paidById], references: [id], onDelete: Restrict)
+  rejectedBy      User?           @relation("ExpenseRejecter", fields: [rejectedById], references: [id], onDelete: Restrict)
   reversedBy      User?           @relation("ExpenseReverser", fields: [reversedById], references: [id], onDelete: Restrict)
+  maintenance     MaintenanceRequest? @relation("MaintenanceExpense", fields: [maintenanceId], references: [id], onDelete: SetNull)
 
   @@unique([hotelId, requestKey])
+  @@index([hotelId, status, expenseDate])
   @@index([hotelId, expenseDate])
   @@index([categoryId, expenseDate])
   @@index([paymentMethodId])
+  @@index([createdById])
+  @@index([approvedById])
+  @@index([paidById])
   @@index([reversedById])
 }
 
@@ -642,24 +690,42 @@ model HousekeepingTask {
 }
 
 model MaintenanceRequest {
-  id                 String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  hotelId            String            @db.Uuid
-  roomId             String            @db.Uuid
-  assignedToId       String?           @db.Uuid
-  createdById        String?           @db.Uuid
+  id                 String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  hotelId            String              @db.Uuid
+  roomId             String              @db.Uuid
+  assignedToId       String?             @db.Uuid
+  createdById        String?             @db.Uuid
   problem            String
-  status             MaintenanceStatus @default(OPEN)
-  cost               Decimal?          @db.Decimal(14, 2)
+  category           String?             @db.VarChar(100)
+  priority           MaintenancePriority @default(MEDIUM)
+  status             MaintenanceStatus   @default(OPEN)
+  cost               Decimal?            @db.Decimal(14, 2)
   notes              String?
-  completedAt        DateTime?         @db.Timestamptz(3)
-  startedAt          DateTime?         @db.Timestamptz(3)
+  assignedAt         DateTime?           @db.Timestamptz(3)
+  startedAt          DateTime?           @db.Timestamptz(3)
+  heldAt             DateTime?           @db.Timestamptz(3)
+  resumedAt          DateTime?           @db.Timestamptz(3)
+  completedAt        DateTime?           @db.Timestamptz(3)
+  completedById      String?             @db.Uuid
+  verifiedAt         DateTime?           @db.Timestamptz(3)
+  verifiedById       String?             @db.Uuid
+  closedAt           DateTime?           @db.Timestamptz(3)
+  closedById         String?             @db.Uuid
+  cancelledAt        DateTime?           @db.Timestamptz(3)
+  cancelledById      String?             @db.Uuid
+  cancelReason       String?             @db.VarChar(500)
   previousRoomStatus RoomStatus?
-  createdAt          DateTime          @default(now()) @db.Timestamptz(3)
-  updatedAt          DateTime          @updatedAt @db.Timestamptz(3)
-  hotel              Hotel             @relation(fields: [hotelId], references: [id], onDelete: Restrict)
-  room               Room              @relation(fields: [roomId], references: [id], onDelete: Restrict)
-  assignedTo         User?             @relation("MaintenanceAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
-  createdBy          User?             @relation("MaintenanceCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt          DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime            @updatedAt @db.Timestamptz(3)
+  hotel              Hotel               @relation(fields: [hotelId], references: [id], onDelete: Restrict)
+  room               Room                @relation(fields: [roomId], references: [id], onDelete: Restrict)
+  assignedTo         User?               @relation("MaintenanceAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  createdBy          User?               @relation("MaintenanceCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  completedBy        User?               @relation("MaintenanceCompleter", fields: [completedById], references: [id], onDelete: SetNull)
+  verifiedBy         User?               @relation("MaintenanceVerifier", fields: [verifiedById], references: [id], onDelete: SetNull)
+  closedBy           User?               @relation("MaintenanceCloser", fields: [closedById], references: [id], onDelete: SetNull)
+  cancelledBy        User?               @relation("MaintenanceCanceller", fields: [cancelledById], references: [id], onDelete: SetNull)
+  expense            Expense?            @relation("MaintenanceExpense")
 
   @@index([hotelId, status, createdAt])
   @@index([roomId, status])

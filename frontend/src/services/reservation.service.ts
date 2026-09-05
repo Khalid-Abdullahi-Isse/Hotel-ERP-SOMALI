@@ -12,6 +12,7 @@ import type {
   ApiService,
 } from "@/types/api-contracts";
 import type { ReservationFormValues } from "@/schemas/reservation.schema";
+import type { ReservationEditValues } from "@/schemas/reservation-edit.schema";
 
 export const availabilityService = {
   async search(params: {
@@ -79,6 +80,19 @@ export const reservationService = {
   },
   async get(id: string) {
     const { data } = await api.get<ApiReservation>(`/reservations/${id}`);
+    return data;
+  },
+  async update(id: string, input: ReservationEditValues) {
+    const { data } = await api.patch<ApiReservation>(
+      `/reservations/${id}`,
+      {
+        checkInDate: input.checkInDate,
+        checkOutDate: input.checkOutDate,
+        adults: input.adults,
+        children: input.children,
+        notes: input.notes?.trim() || undefined,
+      },
+    );
     return data;
   },
   async getGuest(id: string) {
@@ -159,6 +173,14 @@ export const reservationService = {
     reference?: string;
   }) {
     const { data } = await api.post("/payments", input);
+    return data;
+  },
+  async voidCharge(chargeId: string, reason: string) {
+    const { data } = await api.post(`/charges/${chargeId}/void`, { reason });
+    return data;
+  },
+  async createInvoice(reservationId: string) {
+    const { data } = await api.post(`/reservations/${reservationId}/invoice`);
     return data;
   },
 };

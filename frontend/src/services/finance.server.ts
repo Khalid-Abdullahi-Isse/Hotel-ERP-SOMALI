@@ -1,12 +1,20 @@
 import "server-only";
 
 import { serverApi } from "@/lib/server-api";
-import type { ApiExpense, ApiExpenseCategory, ApiPage, ApiPayment } from "@/types/api-contracts";
+import type { ApiExpense, ApiExpenseCategory, ApiInvoice, ApiPage, ApiPayment } from "@/types/api-contracts";
 import type { PaginatedResponse } from "@/types/api";
 import type { CurrencyCode, ExpenseRecord, PaymentRecord } from "@/types/finance";
 import { listQuery } from "@/lib/pagination";
 
 export const getExpenseCategories = () => serverApi<ApiExpenseCategory[]>("/expense-categories");
+
+export async function getPayment(id: string) {
+  return serverApi<ApiPayment>(`/payments/${encodeURIComponent(id)}`);
+}
+
+export async function getInvoice(id: string) {
+  return serverApi<ApiInvoice>(`/invoices/${encodeURIComponent(id)}`);
+}
 
 export async function getPayments(params: { page?: number; search?: string; status?: string } = {}): Promise<PaginatedResponse<PaymentRecord>> {
   const response = await serverApi<ApiPage<ApiPayment>>(`/payments?${listQuery({ ...params, status: params.status?.toUpperCase() })}`);
@@ -34,7 +42,10 @@ export async function getExpenses(params: { page?: number; search?: string; reve
     description: expense.description,
     amount: Number(expense.amount),
     currency: expense.hotel.currencyCode,
-    status: expense.reversed ? "rejected" : "approved",
+    status: expense.reversed ? "REJECTED" : (expense.status ?? "PAID"),
+    reversed: Boolean(expense.reversed),
+    approvedById: expense.approvedById ?? undefined,
+    paidById: expense.paidById ?? undefined,
   })), pagination: response.pagination };
 }
 

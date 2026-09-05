@@ -11,6 +11,7 @@ import { AuditLogsService } from '../audit-logs/audit-logs.service.js';
 import { AvailabilityService } from '../availability/availability.service.js';
 import type { RequestUser } from '../auth/auth.types.js';
 import { parseStayDates } from '../common/dates/stay-dates.js';
+import { runSerializable } from '../common/database/serializable-transaction.js';
 import { paginatedResponse, paginationOffset } from '../common/pagination/pagination.util.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { GuestsService } from '../guests/guests.service.js';
@@ -67,7 +68,7 @@ export class ReservationsService {
     for (let bookingAttempt = 0; bookingAttempt < 3; bookingAttempt += 1) {
       const bookingNumber = this.generateBookingNumber();
       try {
-        return await this.serializable(async (transaction) => {
+        return await runSerializable(this.prisma, async (transaction) => {
           await this.assertGuest(transaction, dto.guestId, actor.hotelId);
           return this.createInTransaction(transaction, dto, dto.guestId, actor, bookingNumber, dates);
         });
@@ -88,7 +89,7 @@ export class ReservationsService {
     for (let bookingAttempt = 0; bookingAttempt < 3; bookingAttempt += 1) {
       const bookingNumber = this.generateBookingNumber();
       try {
-        return await this.serializable(async (transaction) => {
+        return await runSerializable(this.prisma, async (transaction) => {
           const guest = await this.guests.createInTransaction(
             { ...dto.guest, allowPossibleDuplicate: false },
             actor,
@@ -227,7 +228,7 @@ export class ReservationsService {
 
   async update(id: string, dto: UpdateReservationDto, actor: RequestUser) {
     try {
-      return await this.serializable(async (transaction) => {
+      return await runSerializable(this.prisma, async (transaction) => {
         await this.lockReservation(transaction, id, actor.hotelId);
         const before = await this.findHotelReservation(id, actor.hotelId, transaction);
         this.assertEditable(before.status);
@@ -284,7 +285,7 @@ export class ReservationsService {
 
   async replaceRooms(id: string, dto: ReplaceReservationRoomsDto, actor: RequestUser) {
     try {
-      return await this.serializable(async (transaction) => {
+      return await runSerializable(this.prisma, async (transaction) => {
         await this.lockReservation(transaction, id, actor.hotelId);
         const before = await this.findHotelReservation(id, actor.hotelId, transaction);
         this.assertEditable(before.status);
@@ -344,7 +345,7 @@ export class ReservationsService {
   }
 
   async applyDiscount(id: string, dto: ApplyDiscountDto, actor: RequestUser) {
-    return this.serializable(async (transaction) => {
+    return runSerializable(this.prisma, async (transaction) => {
       await this.lockReservation(transaction, id, actor.hotelId);
       const before = await this.findHotelReservation(id, actor.hotelId, transaction);
       if (
@@ -417,7 +418,7 @@ export class ReservationsService {
     note: string | undefined,
     actor: RequestUser,
   ) {
-    return this.serializable(async (transaction) => {
+    return runSerializable(this.prisma, async (transaction) => {
       await this.lockReservation(transaction, id, actor.hotelId);
       const before = await this.findHotelReservation(id, actor.hotelId, transaction);
       this.assertTransition(before.status, target);
@@ -470,25 +471,6 @@ export class ReservationsService {
       );
       return this.view(updated);
     });
-  }
-
-  private async serializable<T>(
-    operation: (transaction: Prisma.TransactionClient) => Promise<T>,
-  ): Promise<T> {
-    let finalError: unknown;
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      try {
-        return await this.prisma.$transaction(operation, {
-          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
-          maxWait: 5_000,
-          timeout: 15_000,
-        });
-      } catch (error) {
-        finalError = error;
-        if (!this.isRetryableTransactionError(error) || attempt === 2) throw error;
-      }
-    }
-    throw finalError;
   }
 
   private assertCapacity(
@@ -737,10 +719,6 @@ export class ReservationsService {
 
   private isOverlapError(error: unknown): boolean {
     return this.hasErrorMarker(error, ['23P01', 'ReservationRoom_no_active_overlap']);
-  }
-
-  private isRetryableTransactionError(error: unknown): boolean {
-    return this.hasErrorMarker(error, ['P2034', '40001', '40P01']);
   }
 
   private hasErrorMarker(error: unknown, markers: string[]): boolean {

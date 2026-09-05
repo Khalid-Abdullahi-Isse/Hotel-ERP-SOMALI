@@ -33,6 +33,8 @@ export default async function StayPage({ params }: { params: Promise<{ reservati
         can(user, PERMISSIONS.chargesCreate) &&
         can(user, PERMISSIONS.servicesRead)
       }
+      canVoidCharge={can(user, PERMISSIONS.chargesVoid)}
+      canCreateInvoice={can(user, PERMISSIONS.invoicesCreate)}
     />
   );
 }
