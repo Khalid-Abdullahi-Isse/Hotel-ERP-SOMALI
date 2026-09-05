@@ -5,8 +5,12 @@ import type { RequestUser } from '../auth/auth.types.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import { RequirePermissions } from '../common/decorators/permissions.decorator.js';
 import {
+  AssignMaintenanceDto,
+  CancelMaintenanceDto,
+  CloseMaintenanceDto,
   CompleteMaintenanceDto,
   CreateMaintenanceDto,
+  HoldMaintenanceDto,
   UpdateMaintenanceDto,
 } from './dto/maintenance.dto.js';
 import { ListMaintenanceQueryDto } from './dto/list-maintenance-query.dto.js';
@@ -41,11 +45,31 @@ export class MaintenanceController {
   ) {
     return this.service.update(id, dto, actor);
   }
+  @Post(':id/assign') @RequirePermissions(PERMISSIONS.MAINTENANCE_UPDATE) assign(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+    @Body() dto: AssignMaintenanceDto,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    return this.service.assign(id, dto, actor);
+  }
   @Post(':id/start') @RequirePermissions(PERMISSIONS.MAINTENANCE_UPDATE) start(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
     @CurrentUser() actor: RequestUser,
   ) {
     return this.service.start(id, actor);
+  }
+  @Post(':id/hold') @RequirePermissions(PERMISSIONS.MAINTENANCE_UPDATE) hold(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+    @Body() dto: HoldMaintenanceDto,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    return this.service.hold(id, dto, actor);
+  }
+  @Post(':id/resume') @RequirePermissions(PERMISSIONS.MAINTENANCE_UPDATE) resume(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    return this.service.resume(id, actor);
   }
   @Post(':id/complete') @RequirePermissions(PERMISSIONS.MAINTENANCE_UPDATE) complete(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
@@ -53,5 +77,25 @@ export class MaintenanceController {
     @CurrentUser() actor: RequestUser,
   ) {
     return this.service.complete(id, dto, actor);
+  }
+  @Post(':id/verify') @RequirePermissions(PERMISSIONS.MAINTENANCE_UPDATE) verify(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    return this.service.verify(id, actor);
+  }
+  @Post(':id/close') @RequirePermissions(PERMISSIONS.MAINTENANCE_UPDATE) close(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+    @Body() dto: CloseMaintenanceDto,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    return this.service.close(id, dto, actor);
+  }
+  @Post(':id/cancel') @RequirePermissions(PERMISSIONS.MAINTENANCE_UPDATE) cancel(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+    @Body() dto: CancelMaintenanceDto,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    return this.service.cancel(id, dto, actor);
   }
 }

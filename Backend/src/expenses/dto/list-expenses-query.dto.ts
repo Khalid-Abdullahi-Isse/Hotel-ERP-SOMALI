@@ -9,5 +9,11 @@ export class ListExpensesQueryDto extends PaginationQueryDto {
   @IsOptional() @IsUUID('4') categoryId?: string;
   @ApiPropertyOptional({ enum: ['true', 'false'] })
   @IsOptional() @IsIn(['true', 'false']) reversed?: 'true' | 'false';
+  @ApiPropertyOptional({
+    enum: ['DRAFT', 'SUBMITTED', 'PENDING_APPROVAL', 'APPROVED', 'PAID', 'REJECTED'],
+  })
+  @IsOptional()
+  @IsIn(['DRAFT', 'SUBMITTED', 'PENDING_APPROVAL', 'APPROVED', 'PAID', 'REJECTED'])
+  status?: 'DRAFT' | 'SUBMITTED' | 'PENDING_APPROVAL' | 'APPROVED' | 'PAID' | 'REJECTED';
 }
 

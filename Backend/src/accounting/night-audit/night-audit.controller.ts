@@ -30,4 +30,10 @@ export class NightAuditController {
   advance(@Body() dto: BusinessDateDto, @CurrentUser() actor: RequestUser) {
     return this.nightAudit.advanceBusinessDate(actor.hotelId, dto.businessDate, actor);
   }
+
+  @Post(':businessDate/reopen')
+  @RequirePermissions(PERMISSIONS.ACCOUNTING_MANAGE)
+  reopen(@Param('businessDate') businessDate: string, @CurrentUser() actor: RequestUser) {
+    return this.nightAudit.reopen(actor.hotelId, businessDate, actor);
+  }
 }

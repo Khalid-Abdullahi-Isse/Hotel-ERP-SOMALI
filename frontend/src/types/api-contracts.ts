@@ -90,14 +90,23 @@ export interface ApiExpense {
   id: string;
   amount: string;
   expenseDate: string;
+  dueDate: string | null;
   description: string;
   reference: string | null;
+  status: "DRAFT" | "SUBMITTED" | "PENDING_APPROVAL" | "APPROVED" | "PAID" | "REJECTED";
+  invoiceNumber: string | null;
   reversed: boolean;
   reversedAt: string | null;
+  submissionNote?: string;
   category: { id: string; name: string };
   hotel: { currencyCode: "USD" | "SOS" };
   paymentMethod: { id: string; name: string } | null;
   createdBy: { id: string; fullName: string };
+  approvedBy: { id: string; fullName: string } | null;
+  paidBy: { id: string; fullName: string } | null;
+  rejectedBy: { id: string; fullName: string } | null;
+  approvedById?: string;
+  paidById?: string;
 }
 export interface ApiExpenseCategory {
   id: string;
@@ -124,23 +133,49 @@ export interface ApiHousekeepingTask {
   assignedTo: { id: string; fullName: string } | null;
   reservation: { id: string; bookingNumber: string } | null;
 }
-export type ApiMaintenanceStatus = "OPEN" | "IN_PROGRESS" | "DONE";
+export type ApiMaintenanceStatus =
+  | "OPEN"
+  | "ASSIGNED"
+  | "IN_PROGRESS"
+  | "ON_HOLD"
+  | "COMPLETED"
+  | "VERIFIED"
+  | "CLOSED"
+  | "CANCELLED";
+export type ApiMaintenancePriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
 export interface ApiMaintenanceRequest {
   id: string;
   roomId: string;
   assignedToId: string | null;
   createdById: string | null;
   problem: string;
+  category: string | null;
+  priority: ApiMaintenancePriority;
   status: ApiMaintenanceStatus;
   cost: string | null;
   notes: string | null;
+  assignedAt: string | null;
   startedAt: string | null;
+  heldAt: string | null;
+  resumedAt: string | null;
   completedAt: string | null;
+  completedById: string | null;
+  verifiedAt: string | null;
+  verifiedById: string | null;
+  closedAt: string | null;
+  closedById: string | null;
+  cancelledAt: string | null;
+  cancelledById: string | null;
+  cancelReason: string | null;
   createdAt: string;
   updatedAt: string;
   room: { id: string; roomNumber: string; status: ApiRoomStatus };
   assignedTo: { id: string; fullName: string } | null;
   createdBy: { id: string; fullName: string } | null;
+  completedBy: { id: string; fullName: string } | null;
+  verifiedBy: { id: string; fullName: string } | null;
+  closedBy: { id: string; fullName: string } | null;
+  cancelledBy: { id: string; fullName: string } | null;
 }
 export interface ApiAuditLog {
   id: string;
@@ -169,6 +204,8 @@ export interface ApiInvoice {
   netPaidAmount: string;
   outstandingAmount: string;
   issuedAt: string | null;
+  voidedAt: string | null;
+  voidReason: string | null;
   createdAt: string;
   hotel: { currencyCode: "USD" | "SOS" };
   reservation: {
@@ -176,6 +213,13 @@ export interface ApiInvoice {
     bookingNumber: string;
     guest: { id: string; fullName: string };
   };
+  items?: Array<{
+    id: string;
+    description: string;
+    quantity: string;
+    unitPrice: string;
+    amount: string;
+  }>;
 }
 export interface ApiRoom {
   id: string;

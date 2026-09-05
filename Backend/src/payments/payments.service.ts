@@ -303,17 +303,18 @@ export class PaymentsService {
         code: 'RESERVATION_NOT_FOUND',
         message: 'Reservation was not found.',
       });
-    const [data, total, summary] = await Promise.all([
-      this.prisma.payment.findMany({
+    const [data, total, summary] = await this.prisma.$transaction(async (tx) => {
+      const payments = await tx.payment.findMany({
         where: { reservationId: id },
         include: PAYMENT_INCLUDE,
         orderBy: [{ paidAt: 'asc' }, { id: 'asc' }],
         skip: paginationOffset(query.page, query.limit),
         take: query.limit,
-      }),
-      this.prisma.payment.count({ where: { reservationId: id } }),
-      this.summary(id, this.prisma),
-    ]);
+      });
+      const count = await tx.payment.count({ where: { reservationId: id } });
+      const financialSummary = await this.summary(id, tx);
+      return [payments, count, financialSummary] as const;
+    });
     return {
       ...paginatedResponse(
         data.map((v) => this.view(v)),

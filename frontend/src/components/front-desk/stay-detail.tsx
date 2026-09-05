@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, LogOut, ShieldAlert } from "lucide-react";
+import { CheckCircle2, FileText, LogOut, ShieldAlert, Trash2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   AlertDialog,
@@ -18,6 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
 import { ReservationStatusBadge } from "@/components/shared/reservation-status-badge";
 import { getApiError } from "@/lib/api-error";
 import { formatCurrency, formatShortDate, titleCase } from "@/lib/format";
@@ -50,9 +52,12 @@ interface StayDetailProps {
   canCheckOut: boolean;
   canCreatePayment: boolean;
   canCreateCharge: boolean;
+  canVoidCharge?: boolean;
+  canCreateInvoice?: boolean;
 }
 
-export function StayDetail({ data, currency, canCheckOut, canCreatePayment, canCreateCharge }: StayDetailProps) {
+export function StayDetail({ data, currency, canCheckOut, canCreatePayment, canCreateCharge, canVoidCharge = false, canCreateInvoice = false }: StayDetailProps) {
+  const router = useRouter();
   const reservationId = data.reservation.id;
   const [checkedOut, setCheckedOut] = useState(data.reservation.status === "CHECKED_OUT");
   const queryClient = useQueryClient();
@@ -79,6 +84,13 @@ export function StayDetail({ data, currency, canCheckOut, canCreatePayment, canC
         paymentsQuery.refetch(),
         queryClient.invalidateQueries({ queryKey: ["front-desk"] }),
       ]);
+    },
+  });
+
+  const issueInvoice = useMutation({
+    mutationFn: () => reservationService.createInvoice(reservationId),
+    onSuccess: () => {
+      router.refresh();
     },
   });
 
@@ -207,12 +219,39 @@ export function StayDetail({ data, currency, canCheckOut, canCreatePayment, canC
               ))}
               {folio.charges
                 .filter((charge) => !charge.voidedAt && charge.type !== "ROOM")
-                .map((charge) => <Line key={charge.id} label={charge.description} value={money(charge.totalAmount, currency)} />)}
+                .map((charge) => (
+                  <div key={charge.id} className="flex items-center justify-between gap-2">
+                    <Line label={charge.description} value={money(charge.totalAmount, currency)} />
+                    {canVoidCharge && charge.type === "SERVICE" ? (
+                      <VoidChargeButton chargeId={charge.id} onVoided={() => refreshFinancials()} />
+                    ) : null}
+                  </div>
+                ))}
               {folio.charges.filter((charge) => !charge.voidedAt && charge.type !== "ROOM").length === 0 ? (
                 <p className="text-sm text-muted-foreground">No service charges posted.</p>
               ) : null}
             </CardContent>
           </Card>
+
+          {checkedOut && canCreateInvoice ? (
+            <Card>
+              <CardContent className="pt-6">
+                {issueInvoice.error ? (
+                  <Alert variant="destructive" className="mb-4">
+                    <AlertDescription>{getApiError(issueInvoice.error).message}</AlertDescription>
+                  </Alert>
+                ) : null}
+                <Button
+                  onClick={() => issueInvoice.mutate()}
+                  disabled={issueInvoice.isPending}
+                  className="w-full"
+                >
+                  <FileText />
+                  {issueInvoice.isPending ? "Issuing invoice..." : "Issue invoice"}
+                </Button>
+              </CardContent>
+            </Card>
+          ) : null}
         </div>
 
         <div className="space-y-5">
@@ -270,5 +309,56 @@ function Line({ label, value, strong = false }: { label: string; value: string; 
       <span>{label}</span>
       <span className="tabular-nums">{value}</span>
     </div>
+  );
+}
+
+function VoidChargeButton({ chargeId, onVoided }: { chargeId: string; onVoided: () => Promise<unknown> }) {
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState("");
+  const mutation = useMutation({
+    mutationFn: () => reservationService.voidCharge(chargeId, reason),
+    onSuccess: async () => {
+      setOpen(false);
+      setReason("");
+      await onVoided();
+    },
+  });
+  return (
+    <AlertDialog open={open} onOpenChange={setOpen}>
+      <AlertDialogTrigger asChild>
+        <Button size="icon" variant="ghost" className="size-8 shrink-0 text-muted-foreground hover:text-destructive">
+          <Trash2 className="size-3.5" />
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Void this charge?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This action cannot be undone. The charge will be marked as voided and excluded from the folio total.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <Textarea
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          placeholder="Reason for voiding (required)"
+          maxLength={500}
+        />
+        {mutation.error ? (
+          <Alert variant="destructive">
+            <AlertDescription>{getApiError(mutation.error).message}</AlertDescription>
+          </Alert>
+        ) : null}
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={mutation.isPending}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            disabled={mutation.isPending || reason.trim().length < 3}
+            onClick={(e) => { e.preventDefault(); mutation.mutate(); }}
+          >
+            {mutation.isPending ? "Voiding..." : "Void charge"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

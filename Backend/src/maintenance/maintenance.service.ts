@@ -1,14 +1,27 @@
+import { randomUUID } from 'node:crypto';
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import type { Prisma } from '../generated/prisma/client.js';
-import { MaintenanceStatus, ReservationStatus, RoomStatus } from '../generated/prisma/enums.js';
+import { Prisma } from '../generated/prisma/client.js';
+import {
+  ExpenseStatus,
+  HousekeepingStatus,
+  MaintenancePriority,
+  MaintenanceStatus,
+  ReservationStatus,
+  RoomStatus,
+} from '../generated/prisma/enums.js';
 import { AuditLogsService } from '../audit-logs/audit-logs.service.js';
 import type { RequestUser } from '../auth/auth.types.js';
 import { runSerializable } from '../common/database/serializable-transaction.js';
 import { paginatedResponse, paginationOffset } from '../common/pagination/pagination.util.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { ExpenseAccountingService } from '../accounting/expense-accounting.service.js';
 import type {
+  AssignMaintenanceDto,
+  CancelMaintenanceDto,
+  CloseMaintenanceDto,
   CompleteMaintenanceDto,
   CreateMaintenanceDto,
+  HoldMaintenanceDto,
   UpdateMaintenanceDto,
 } from './dto/maintenance.dto.js';
 import type { ListMaintenanceQueryDto } from './dto/list-maintenance-query.dto.js';
@@ -16,12 +29,17 @@ const INCLUDE = {
   room: { select: { id: true, roomNumber: true, status: true } },
   assignedTo: { select: { id: true, fullName: true } },
   createdBy: { select: { id: true, fullName: true } },
+  completedBy: { select: { id: true, fullName: true } },
+  verifiedBy: { select: { id: true, fullName: true } },
+  closedBy: { select: { id: true, fullName: true } },
+  cancelledBy: { select: { id: true, fullName: true } },
 } as const;
 @Injectable()
 export class MaintenanceService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audits: AuditLogsService,
+    private readonly expenseAccounting: ExpenseAccountingService,
   ) {}
   async list(query: ListMaintenanceQueryDto, actor: RequestUser) {
     const search = query.search?.trim();
@@ -78,12 +96,17 @@ export class MaintenanceService {
           createdById: actor.id,
           problem: dto.problem.trim(),
           notes: dto.notes?.trim(),
+          category: dto.category?.trim(),
+          priority: dto.priority ?? MaintenancePriority.MEDIUM,
+          assignedAt: dto.assignedToId ? new Date() : undefined,
         },
         include: INCLUDE,
       });
       await this.audit(tx, actor, 'maintenance.create', value.id, undefined, {
         roomId: value.roomId,
         problem: value.problem,
+        category: value.category ?? null,
+        priority: value.priority,
       });
       return this.view(value);
     });
@@ -94,10 +117,10 @@ export class MaintenanceService {
         where: { id, hotelId: actor.hotelId },
       });
       if (!before) this.notFound();
-      if (before.status === MaintenanceStatus.DONE)
+      if (this.terminal(before.status) || before.status === MaintenanceStatus.IN_PROGRESS)
         throw new ConflictException({
-          code: 'MAINTENANCE_COMPLETED',
-          message: 'Completed maintenance cannot be edited.',
+          code: 'MAINTENANCE_NOT_EDITABLE',
+          message: 'Only open, assigned or on-hold maintenance can be edited.',
         });
       if (dto.roomId && dto.roomId !== before.roomId)
         throw new ConflictException({
@@ -111,6 +134,10 @@ export class MaintenanceService {
           assignedToId: dto.assignedToId,
           problem: dto.problem?.trim(),
           notes: dto.notes?.trim(),
+          category: dto.category?.trim(),
+          priority: dto.priority,
+          assignedAt:
+            dto.assignedToId && !before.assignedToId ? new Date() : undefined,
         },
         include: INCLUDE,
       });
@@ -119,8 +146,48 @@ export class MaintenanceService {
         actor,
         'maintenance.update',
         id,
-        { assignedToId: before.assignedToId, problem: before.problem },
-        { assignedToId: value.assignedToId, problem: value.problem },
+        this.json({
+          assignedToId: before.assignedToId,
+          problem: before.problem,
+          category: before.category,
+          priority: before.priority,
+        }),
+        this.json({
+          assignedToId: value.assignedToId,
+          problem: value.problem,
+          category: value.category,
+          priority: value.priority,
+        }),
+      );
+      return this.view(value);
+    });
+  }
+  assign(id: string, dto: AssignMaintenanceDto, actor: RequestUser) {
+    return runSerializable(this.prisma, async (tx) => {
+      const request = await this.lock(tx, id, actor.hotelId);
+      if (request.status !== MaintenanceStatus.OPEN)
+        this.invalid('Only an open maintenance request can be assigned.');
+      await this.assignee(tx, dto.assignedToId, actor.hotelId);
+      if (request.assignedToId === dto.assignedToId)
+        return this.view(
+          await tx.maintenanceRequest.findUniqueOrThrow({ where: { id }, include: INCLUDE }),
+        );
+      const value = await tx.maintenanceRequest.update({
+        where: { id },
+        data: {
+          status: MaintenanceStatus.ASSIGNED,
+          assignedToId: dto.assignedToId,
+          assignedAt: new Date(),
+        },
+        include: INCLUDE,
+      });
+      await this.audit(
+        tx,
+        actor,
+        'maintenance.assign',
+        id,
+        { status: request.status, assignedToId: request.assignedToId },
+        { status: value.status, assignedToId: value.assignedToId, assignedAt: value.assignedAt?.toISOString() ?? null },
       );
       return this.view(value);
     });
@@ -132,7 +199,8 @@ export class MaintenanceService {
         return this.view(
           await tx.maintenanceRequest.findUniqueOrThrow({ where: { id }, include: INCLUDE }),
         );
-      if (request.status !== MaintenanceStatus.OPEN) this.invalid();
+      if (request.status !== MaintenanceStatus.OPEN && request.status !== MaintenanceStatus.ASSIGNED)
+        this.invalid('Only an open or assigned maintenance request can be started.');
       await tx.$queryRaw`SELECT "id" FROM "Room" WHERE "id"=${request.roomId}::uuid FOR UPDATE`;
       const room = await tx.room.findUniqueOrThrow({ where: { id: request.roomId } });
       if (room.status !== RoomStatus.AVAILABLE && room.status !== RoomStatus.DIRTY)
@@ -140,27 +208,40 @@ export class MaintenanceService {
           code: 'ROOM_NOT_READY_FOR_MAINTENANCE',
           message: 'Room must be available or dirty before maintenance starts.',
         });
-      const bookings = await tx.reservationRoom.count({
+      const activeBookings = await tx.reservationRoom.findMany({
         where: {
           roomId: room.id,
           bookingStatus: {
-            in: [
-              ReservationStatus.PENDING,
-              ReservationStatus.CONFIRMED,
-              ReservationStatus.CHECKED_IN,
-            ],
+            in: [ReservationStatus.PENDING, ReservationStatus.CONFIRMED, ReservationStatus.CHECKED_IN],
           },
         },
+        select: { reservationId: true, bookingStatus: true },
       });
-      const cleaning = await tx.housekeepingTask.count({
-        where: { roomId: room.id, status: { in: ['DIRTY', 'CLEANING'] } },
-      });
-      if (bookings || cleaning)
+      if (activeBookings.some((b) => b.bookingStatus === ReservationStatus.CHECKED_IN))
         throw new ConflictException({
           code: 'ROOM_HAS_ACTIVE_WORK_OR_BOOKING',
-          message: 'Move bookings and finish cleaning workflow before maintenance.',
+          message: 'Guest is currently checked in. Check out before starting maintenance.',
         });
+      const reservationIds = [...new Set(activeBookings.map((b) => b.reservationId))];
       const now = new Date();
+      if (reservationIds.length > 0) {
+        await tx.reservation.updateMany({
+          where: { id: { in: reservationIds } },
+          data: {
+            status: ReservationStatus.CANCELLED,
+            cancelledAt: now,
+            cancellationNote: 'Auto-cancelled: maintenance started.',
+          },
+        });
+      }
+      await tx.housekeepingTask.updateMany({
+        where: { roomId: room.id, status: HousekeepingStatus.DIRTY },
+        data: { status: HousekeepingStatus.CLEANING, startedAt: now },
+      });
+      await tx.housekeepingTask.updateMany({
+        where: { roomId: room.id, status: HousekeepingStatus.CLEANING },
+        data: { status: HousekeepingStatus.COMPLETED, completedAt: now },
+      });
       await tx.room.update({ where: { id: room.id }, data: { status: RoomStatus.MAINTENANCE } });
       await tx.maintenanceRequest.update({
         where: { id },
@@ -169,6 +250,7 @@ export class MaintenanceService {
           startedAt: now,
           previousRoomStatus: room.status,
           assignedToId: request.assignedToId ?? actor.id,
+          assignedAt: request.assignedAt ?? now,
         },
       });
       await this.audit(
@@ -184,15 +266,127 @@ export class MaintenanceService {
       );
     });
   }
+  hold(id: string, dto: HoldMaintenanceDto, actor: RequestUser) {
+    return runSerializable(this.prisma, async (tx) => {
+      const request = await this.lock(tx, id, actor.hotelId);
+      if (request.status !== MaintenanceStatus.IN_PROGRESS)
+        this.invalid('Only in-progress maintenance can be put on hold.');
+      const value = await tx.maintenanceRequest.update({
+        where: { id },
+        data: {
+          status: MaintenanceStatus.ON_HOLD,
+          heldAt: new Date(),
+          resumedAt: null,
+          notes: dto.reason?.trim() ?? request.notes,
+        },
+        include: INCLUDE,
+      });
+      await this.audit(
+        tx,
+        actor,
+        'maintenance.hold',
+        id,
+        { status: request.status },
+        { status: value.status, heldAt: value.heldAt?.toISOString() ?? null, reason: dto.reason?.trim() ?? null },
+      );
+      return this.view(value);
+    });
+  }
+  resume(id: string, actor: RequestUser) {
+    return runSerializable(this.prisma, async (tx) => {
+      const request = await this.lock(tx, id, actor.hotelId);
+      if (request.status !== MaintenanceStatus.ON_HOLD)
+        this.invalid('Only on-hold maintenance can be resumed.');
+      const value = await tx.maintenanceRequest.update({
+        where: { id },
+        data: { status: MaintenanceStatus.IN_PROGRESS, resumedAt: new Date() },
+        include: INCLUDE,
+      });
+      await this.audit(
+        tx,
+        actor,
+        'maintenance.resume',
+        id,
+        { status: request.status },
+        { status: value.status, resumedAt: value.resumedAt?.toISOString() ?? null },
+      );
+      return this.view(value);
+    });
+  }
   complete(id: string, dto: CompleteMaintenanceDto, actor: RequestUser) {
     return runSerializable(this.prisma, async (tx) => {
       const request = await this.lock(tx, id, actor.hotelId);
-      if (request.status === MaintenanceStatus.DONE)
-        return this.view(
-          await tx.maintenanceRequest.findUniqueOrThrow({ where: { id }, include: INCLUDE }),
+      if (request.status !== MaintenanceStatus.IN_PROGRESS)
+        this.invalid('Only in-progress maintenance can be completed.');
+      const now = new Date();
+      const value = await tx.maintenanceRequest.update({
+        where: { id },
+        data: {
+          status: MaintenanceStatus.COMPLETED,
+          completedAt: now,
+          completedById: actor.id,
+          cost: dto.cost ? new Prisma.Decimal(dto.cost) : request.cost,
+          notes: dto.notes?.trim() ?? request.notes,
+        },
+        include: INCLUDE,
+      });
+      let expenseId: string | null = null;
+      if (value.cost && value.cost.gt(0)) {
+        expenseId = await this.createMaintenanceExpense(
+          tx,
+          {
+            id: value.id,
+            roomId: value.roomId,
+            hotelId: value.hotelId,
+            problem: value.problem,
+            cost: value.cost,
+            completedAt: value.completedAt,
+          },
+          actor,
         );
-      if (request.status !== MaintenanceStatus.IN_PROGRESS || !request.previousRoomStatus)
-        this.invalid();
+      }
+      await this.audit(
+        tx,
+        actor,
+        'maintenance.complete',
+        id,
+        { status: request.status },
+        this.json({
+          status: value.status,
+          completedById: actor.id,
+          cost: value.cost?.toString() ?? null,
+          expenseId,
+        }),
+      );
+      return this.view(value);
+    });
+  }
+  verify(id: string, actor: RequestUser) {
+    return runSerializable(this.prisma, async (tx) => {
+      const request = await this.lock(tx, id, actor.hotelId);
+      if (request.status !== MaintenanceStatus.COMPLETED)
+        this.invalid('Only completed maintenance can be verified.');
+      const value = await tx.maintenanceRequest.update({
+        where: { id },
+        data: { status: MaintenanceStatus.VERIFIED, verifiedAt: new Date(), verifiedById: actor.id },
+        include: INCLUDE,
+      });
+      await this.audit(
+        tx,
+        actor,
+        'maintenance.verify',
+        id,
+        { status: request.status },
+        { status: value.status, verifiedById: actor.id, verifiedAt: value.verifiedAt?.toISOString() ?? null },
+      );
+      return this.view(value);
+    });
+  }
+  close(id: string, dto: CloseMaintenanceDto, actor: RequestUser) {
+    return runSerializable(this.prisma, async (tx) => {
+      const request = await this.lock(tx, id, actor.hotelId);
+      if (request.status !== MaintenanceStatus.VERIFIED)
+        this.invalid('Only verified maintenance can be closed and return the room to service.');
       await tx.$queryRaw`SELECT "id" FROM "Room" WHERE "id"=${request.roomId}::uuid FOR UPDATE`;
       const room = await tx.room.findUniqueOrThrow({ where: { id: request.roomId } });
       if (room.status !== RoomStatus.MAINTENANCE)
@@ -206,9 +400,9 @@ export class MaintenanceService {
       const value = await tx.maintenanceRequest.update({
         where: { id },
         data: {
-          status: MaintenanceStatus.DONE,
-          completedAt: new Date(),
-          cost: dto.cost,
+          status: MaintenanceStatus.CLOSED,
+          closedAt: new Date(),
+          closedById: actor.id,
           notes: dto.notes?.trim() ?? request.notes,
         },
         include: INCLUDE,
@@ -224,13 +418,103 @@ export class MaintenanceService {
       await this.audit(
         tx,
         actor,
-        'maintenance.complete',
+        'maintenance.close',
         id,
-        { status: request.status },
-        { status: value.status, cost: value.cost?.toString() ?? null, roomStatus: target },
+        { status: request.status, roomStatus: room.status },
+        { status: value.status, closedById: actor.id, roomStatus: target },
       );
       return this.view(value);
     });
+  }
+  cancel(id: string, dto: CancelMaintenanceDto, actor: RequestUser) {
+    return runSerializable(this.prisma, async (tx) => {
+      const request = await this.lock(tx, id, actor.hotelId);
+      if (
+        request.status !== MaintenanceStatus.OPEN &&
+        request.status !== MaintenanceStatus.ASSIGNED &&
+        request.status !== MaintenanceStatus.IN_PROGRESS &&
+        request.status !== MaintenanceStatus.ON_HOLD
+      )
+        this.invalid('Maintenance cannot be cancelled in this state.');
+      if (request.status === MaintenanceStatus.IN_PROGRESS || request.status === MaintenanceStatus.ON_HOLD) {
+        await tx.$queryRaw`SELECT "id" FROM "Room" WHERE "id"=${request.roomId}::uuid FOR UPDATE`;
+        const room = await tx.room.findUniqueOrThrow({ where: { id: request.roomId } });
+        if (room.status === RoomStatus.MAINTENANCE && request.previousRoomStatus) {
+          await tx.room.update({
+            where: { id: room.id },
+            data: { status: request.previousRoomStatus },
+          });
+        }
+      }
+      const value = await tx.maintenanceRequest.update({
+        where: { id },
+        data: {
+          status: MaintenanceStatus.CANCELLED,
+          cancelledAt: new Date(),
+          cancelledById: actor.id,
+          cancelReason: dto.reason.trim(),
+        },
+        include: INCLUDE,
+      });
+      await this.audit(
+        tx,
+        actor,
+        'maintenance.cancel',
+        id,
+        { status: request.status },
+        { status: value.status, cancelledById: actor.id, cancelReason: value.cancelReason },
+      );
+      return this.view(value);
+    });
+  }
+  private async createMaintenanceExpense(
+    tx: Prisma.TransactionClient,
+    request: { id: string; roomId: string; hotelId: string; problem: string; cost: Prisma.Decimal; completedAt: Date | null },
+    actor: RequestUser,
+  ) {
+    let category = await tx.expenseCategory.findFirst({
+      where: { hotelId: actor.hotelId, name: { equals: 'Maintenance', mode: 'insensitive' }, isActive: true },
+      select: { id: true, expenseAccountId: true },
+    });
+    if (!category) {
+      category = await tx.expenseCategory.create({
+        data: { hotelId: actor.hotelId, name: 'Maintenance' },
+        select: { id: true, expenseAccountId: true },
+      });
+    }
+    const now = new Date();
+    const expense = await tx.expense.create({
+      data: {
+        hotelId: actor.hotelId,
+        categoryId: category.id,
+        createdById: actor.id,
+        requestKey: randomUUID(),
+        status: ExpenseStatus.APPROVED,
+        amount: request.cost,
+        expenseDate: request.completedAt ?? now,
+        description: `Maintenance: ${request.problem}`,
+        submittedAt: now,
+        approvedAt: now,
+        approvedById: actor.id,
+        maintenanceId: request.id,
+      },
+      select: { id: true, amount: true, expenseDate: true, description: true, paymentMethodId: true },
+    });
+    await this.expenseAccounting.postExpense(
+      {
+        id: expense.id,
+        amount: expense.amount,
+        expenseDate: expense.expenseDate,
+        description: expense.description,
+        reference: null,
+        expenseAccountId: category.expenseAccountId ?? null,
+        paymentAccountId: null,
+        hasPaymentMethod: false,
+      },
+      actor,
+      tx,
+    );
+    return expense.id;
   }
   private async lock(tx: Prisma.TransactionClient, id: string, hotelId: string) {
     const rows = await tx.$queryRaw<
@@ -247,6 +531,14 @@ export class MaintenanceService {
         code: 'INVALID_MAINTENANCE_ASSIGNEE',
         message: 'Assignee must be an active hotel user.',
       });
+  }
+  private terminal(status: MaintenanceStatus) {
+    return (
+      status === MaintenanceStatus.COMPLETED ||
+      status === MaintenanceStatus.VERIFIED ||
+      status === MaintenanceStatus.CLOSED ||
+      status === MaintenanceStatus.CANCELLED
+    );
   }
   private view<T extends { cost: { toString(): string } | null }>(v: T) {
     return { ...v, cost: v.cost?.toString() ?? null };
@@ -272,10 +564,10 @@ export class MaintenanceService {
       tx,
     );
   }
-  private invalid(): never {
+  private invalid(message = 'Maintenance request is not in the required state.'): never {
     throw new ConflictException({
       code: 'INVALID_MAINTENANCE_TRANSITION',
-      message: 'Maintenance request is not in the required state.',
+      message,
     });
   }
   private notFound(): never {
@@ -283,5 +575,8 @@ export class MaintenanceService {
       code: 'MAINTENANCE_NOT_FOUND',
       message: 'Maintenance request was not found.',
     });
+  }
+  private json(v: unknown): Prisma.InputJsonObject {
+    return JSON.parse(JSON.stringify(v)) as Prisma.InputJsonObject;
   }
 }

@@ -54,9 +54,6 @@ export class NightAuditService {
         },
       });
 
-      let totalRevenue = 0;
-      let roomNights = 0;
-
       for (const row of rows) {
         const nightlyRate = new Prisma.Decimal(row.nightlyRate ?? '0');
         const existingNight = await tx.reservationRoomNight.findUnique({
@@ -93,17 +90,26 @@ export class NightAuditService {
           actor,
           tx,
         );
-
-        totalRevenue = Number(new Prisma.Decimal(totalRevenue).plus(nightlyRate));
-        roomNights += 1;
       }
+
+      // Recompute totals from the full night set for this business date. This
+      // makes posting idempotent and correct when a closed date is reopened and
+      // re-posted (new nights are added, existing ones are never duplicated).
+      const date = new Date(`${businessDate}T00:00:00.000Z`);
+      const nightTotals = await tx.reservationRoomNight.aggregate({
+        where: { hotelId, businessDate: date },
+        _sum: { amount: true },
+        _count: true,
+      });
+      const totalRevenue = nightTotals._sum.amount ?? new Prisma.Decimal(0);
+      const roomNights = nightTotals._count ?? 0;
 
       const posted = await tx.hotelBusinessDate.update({
         where: { id: current.id },
         data: {
           status: 'POSTED',
           roomNights,
-          totalRoomRevenue: new Prisma.Decimal(totalRevenue),
+          totalRoomRevenue: totalRevenue,
         },
       });
 
@@ -157,6 +163,58 @@ export class NightAuditService {
     });
   }
 
+  async reopen(hotelId: string, businessDate: string, actor: RequestUser) {
+    return runSerializable(this.prisma, async (tx) => {
+      const target = new Date(`${businessDate}T00:00:00.000Z`);
+      const row = await tx.hotelBusinessDate.findUnique({
+        where: { hotelId_businessDate: { hotelId, businessDate: target } },
+      });
+      if (!row)
+        throw new NotFoundException({
+          code: 'BUSINESS_DATE_NOT_FOUND',
+          message: 'The requested business date was not found.',
+        });
+      if (row.status !== 'POSTED')
+        throw new ConflictException({
+          code: 'BUSINESS_DATE_NOT_POSTED',
+          message: 'Only a posted business date can be reopened.',
+        });
+      const later = await tx.hotelBusinessDate.findFirst({
+        where: { hotelId, businessDate: { gt: target } },
+        select: { businessDate: true },
+      });
+      if (later)
+        throw new ConflictException({
+          code: 'LATER_BUSINESS_DATE_EXISTS',
+          message: 'Reopen the most recent posted business date before earlier dates.',
+        });
+      const updated = await tx.hotelBusinessDate.update({
+        where: { id: row.id },
+        data: { status: 'OPEN' },
+      });
+      await this.audits.record(
+        {
+          hotelId,
+          userId: actor.id,
+          action: 'accounting.night_audit_reopened',
+          entityType: 'HotelBusinessDate',
+          entityId: updated.id,
+          oldValue: { status: 'POSTED' },
+          newValue: { status: 'OPEN', businessDate },
+        },
+        tx,
+      );
+      return {
+        id: updated.id,
+        hotelId,
+        businessDate: updated.businessDate.toISOString().slice(0, 10),
+        status: updated.status,
+        roomNights: updated.roomNights,
+        totalRoomRevenue: updated.totalRoomRevenue.toString(),
+      };
+    });
+  }
+
   async getBusinessDate(hotelId: string, businessDate: string) {
     const row = await this.prisma.hotelBusinessDate.findUnique({
       where: { hotelId_businessDate: { hotelId, businessDate: new Date(`${businessDate}T00:00:00.000Z`) } },
@@ -195,9 +253,5 @@ export class NightAuditService {
         totalRoomRevenue: new Prisma.Decimal(0),
       },
     });
-  }
-
-  private decimal(value: number | string | Prisma.Decimal) {
-    return new Prisma.Decimal(String(value));
   }
 }

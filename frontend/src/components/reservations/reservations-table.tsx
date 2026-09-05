@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { TicketX } from "lucide-react";
 import {
   Table,
@@ -81,7 +82,9 @@ export function ReservationsTable({
                 {visible.map((reservation) => (
                   <TableRow key={reservation.id}>
                     <TableCell className="font-mono text-xs font-semibold text-primary">
-                      {reservation.bookingId}
+                      <Link href={`/reservations/${reservation.id}`} className="hover:underline">
+                        {reservation.bookingId}
+                      </Link>
                     </TableCell>
                     <TableCell>
                       <p className="font-medium">{reservation.guestName}</p>
@@ -123,7 +126,9 @@ export function ReservationsTable({
                   <div>
                     <p className="font-medium">{reservation.guestName}</p>
                     <p className="mt-1 font-mono text-[11px] font-medium text-primary">
-                      {reservation.bookingId}
+                      <Link href={`/reservations/${reservation.id}`} className="hover:underline">
+                        {reservation.bookingId}
+                      </Link>
                     </p>
                   </div>
                   <ReservationStatusBadge status={reservation.status} />

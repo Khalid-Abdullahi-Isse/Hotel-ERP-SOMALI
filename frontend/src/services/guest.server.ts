@@ -20,6 +20,15 @@ export async function getGuests(params: { page?: number; limit?: number; search?
   const response = await serverApi<ApiPage<ApiGuest>>(`/guests?${listQuery(params)}`);
   return { data: response.data.map(summary), pagination: response.pagination };
 }
+export async function getGuestRaw(id: string): Promise<ApiGuest | null> {
+  try {
+    return await serverApi<ApiGuest>(`/guests/${encodeURIComponent(id)}`);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return null;
+    throw error;
+  }
+}
+
 export async function getGuest(id: string): Promise<GuestProfile | null> {
   let guest: ApiGuest;
   try { guest = await serverApi<ApiGuest>(`/guests/${encodeURIComponent(id)}`); }

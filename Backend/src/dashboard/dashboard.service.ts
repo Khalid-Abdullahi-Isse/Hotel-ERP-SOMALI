@@ -64,7 +64,10 @@ export class DashboardService {
       }),
       this.prisma.maintenanceRequest.groupBy({
         by: ['status'],
-        where: { hotelId: actor.hotelId, status: { not: 'DONE' } },
+        where: {
+          hotelId: actor.hotelId,
+          status: { notIn: ['COMPLETED', 'VERIFIED', 'CLOSED', 'CANCELLED'] },
+        },
         _count: true,
       }),
       this.prisma.$queryRaw<

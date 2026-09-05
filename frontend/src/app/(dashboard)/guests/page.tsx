@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeft, UserRoundCheck } from "lucide-react";
+import { ArrowLeft, UserPlus, UserRoundCheck } from "lucide-react";
 import { GuestsTable } from "@/components/guests/guests-table";
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
@@ -39,6 +39,7 @@ export default async function GuestsPage({
     if (selectingForReservation) query.set("mode", "reservation");
     redirect(`/guests?${query}`);
   }
+  const canCreate = Boolean(user && can(user, PERMISSIONS.guestsCreate));
   return (
     <div className="space-y-6">
       <PageHeader
@@ -54,6 +55,13 @@ export default async function GuestsPage({
               <Link href="/front-desk">
                 <ArrowLeft />
                 Back to Front Desk
+              </Link>
+            </Button>
+          ) : canCreate ? (
+            <Button asChild>
+              <Link href="/guests/new">
+                <UserPlus />
+                New guest
               </Link>
             </Button>
           ) : undefined
