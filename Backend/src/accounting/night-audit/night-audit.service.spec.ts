@@ -76,6 +76,10 @@ describe('NightAuditService', () => {
       reservationRoomNight: {
         findUnique: jest.fn().mockResolvedValue(null),
         create: jest.fn().mockImplementation(async ({ data }) => ({ id: data.reservationRoomId, ...data })),
+        aggregate: jest.fn().mockResolvedValue({
+          _sum: { amount: '230.00' },
+          _count: 2,
+        }),
       },
       hotelBusinessDate: {
         findUnique: jest.fn().mockResolvedValue(null),
