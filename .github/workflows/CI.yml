@@ -154,6 +154,8 @@ jobs:
         run: pnpm --filter frontend run test:run
 
       - name: Build Next.js frontend
+        env:
+          NODE_ENV: production
         run: pnpm --filter frontend build
 
 
