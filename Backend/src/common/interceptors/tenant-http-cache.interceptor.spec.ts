@@ -64,6 +64,19 @@ describe('TenantHttpCacheInterceptor', () => {
     ).resolves.toEqual({ hotel: 'two' });
   });
 
+  it.each([new Error('Redis unavailable'), 'Redis unavailable'])(
+    'continues serving requests when cache reads reject with %p',
+    async (reason) => {
+      jest.spyOn(cache, 'get').mockRejectedValue(reason);
+
+      await expect(
+        lastValueFrom(
+          await interceptor.intercept(httpContext('GET', actor), handler({ rooms: ['101'] })),
+        ),
+      ).resolves.toEqual({ rooms: ['101'] });
+    },
+  );
+
   it('invalidates all prior hotel GET keys after a successful mutation', async () => {
     const getContext = httpContext('GET', actor);
     await lastValueFrom(await interceptor.intercept(getContext, handler({ version: 1 })));

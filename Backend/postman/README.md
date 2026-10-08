@@ -26,5 +26,5 @@ audit, reservation, payment, invoice, expense, or user history.
 To regenerate the JSON artifacts after changing the generator:
 
 ```powershell
-npm run postman:generate
+pnpm run postman:generate
 ```

@@ -1,5 +1,3 @@
-import { describe, expect, it } from '@jest/globals';
-
 describe('operational accounting seed invariants', () => {
   it('requires positive, one-sided, balanced journal lines', () => {
     const lines = [

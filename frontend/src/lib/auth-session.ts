@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { API_URL } from "@/lib/config";
+import { backendFetch } from "@/lib/backend-fetch";
 import { ACCESS_COOKIE, REFRESH_COOKIE, authCookieOptions } from "@/lib/auth-cookies";
 import type { ApiAuthenticationResult } from "@/types/api-contracts";
 
@@ -54,7 +54,7 @@ export function clearAuthCookies(response: NextResponse) {
 }
 
 async function requestSessionRefresh(refreshToken: string): Promise<SessionRefreshResult | null> {
-  const response = await fetch(`${API_URL}/auth/refresh`, { method: "POST", headers: { Accept: "application/json", Cookie: `${REFRESH_COOKIE}=${refreshToken}` }, cache: "no-store" });
+  const response = await backendFetch("/auth/refresh", { method: "POST", headers: { Accept: "application/json", Cookie: `${REFRESH_COOKIE}=${refreshToken}` }, cache: "no-store" });
   if (!response.ok) return null;
   return { backendResponse: response, auth: await response.json() as ApiAuthenticationResult };
 }

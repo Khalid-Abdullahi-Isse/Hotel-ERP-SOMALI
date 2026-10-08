@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { ACCESS_COOKIE, REFRESH_COOKIE } from "@/lib/auth-cookies";
 import { clearAuthCookies, refreshSession, setAuthCookies } from "@/lib/auth-session";
-import { API_URL } from "@/lib/config";
+import { backendFetch } from "@/lib/backend-fetch";
 import { hasTrustedOrigin, untrustedOriginResponse } from "@/lib/request-origin";
 
 async function proxy(request: Request, context: { params: Promise<{ path: string[] }> }) {
@@ -24,9 +24,9 @@ async function proxy(request: Request, context: { params: Promise<{ path: string
     return response;
   }
   const sourceUrl = new URL(request.url);
-  const target = `${API_URL}/${path.map(encodeURIComponent).join("/")}${sourceUrl.search}`;
+  const target = `/${path.map(encodeURIComponent).join("/")}${sourceUrl.search}`;
   const body = request.method === "GET" || request.method === "HEAD" ? undefined : await request.arrayBuffer();
-  const call = (token: string) => fetch(target, { method: request.method, body, headers: { Accept: request.headers.get("accept") ?? "application/json", "Content-Type": request.headers.get("content-type") ?? "application/json", Authorization: `Bearer ${token}` }, cache: "no-store" });
+  const call = (token: string) => backendFetch(target, { method: request.method, body, headers: { Accept: request.headers.get("accept") ?? "application/json", "Content-Type": request.headers.get("content-type") ?? "application/json", Authorization: `Bearer ${token}` }, cache: "no-store" });
   let backend = await call(access);
   if (backend.status === 401 && refresh && !refreshed) {
     refreshed = await refreshSession(refresh);

@@ -73,10 +73,10 @@ protection, and last-admin protection.
 
 1. Copy `.env.example` to `.env` and replace every placeholder secret.
 2. Start PostgreSQL: `docker compose up -d postgres`.
-3. Apply migrations: `npm run db:deploy`.
+3. Apply migrations: `pnpm run db:deploy`.
 4. Set the six `BOOTSTRAP_*` variables described in `.env.example`.
-5. Create the first hotel/admin: `npm run bootstrap:admin`.
-6. Start the API: `npm run start:dev`.
+5. Create the first hotel/admin: `pnpm run bootstrap:admin`.
+6. Start the API: `pnpm run start:dev`.
 7. Open Swagger at `http://localhost:3005/docs`.
 
 The development database was left empty after testing, ready for the real hotel

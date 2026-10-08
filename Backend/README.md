@@ -17,12 +17,12 @@ Use the Docker host ports below to avoid collisions with other local services al
 
 ```bash
 cp .env.example .env
-npm ci
+pnpm install --frozen-lockfile
 docker compose up -d postgres redis
-npm run db:deploy
-npm run prisma:generate
-npm run bootstrap:admin
-npm run start:dev
+pnpm run db:deploy
+pnpm run prisma:generate
+pnpm run bootstrap:admin
+pnpm run start:dev
 ```
 
 On PowerShell, use `Copy-Item .env.example .env` instead of `cp`.
@@ -51,12 +51,12 @@ The collection covers every controller route and includes a stateful end-to-end 
 ## Commands
 
 ```bash
-npm run build
-npm run lint
-npm run format:check
-npm run prisma:validate
-npm run test:e2e
-npm audit --audit-level=high
+pnpm run build
+pnpm run lint
+pnpm run format:check
+pnpm run prisma:validate
+pnpm run test:e2e
+pnpm audit --audit-level=high
 docker compose up --build
 ```
 
@@ -66,7 +66,7 @@ Production secrets must come from the deployment platform's secret store.
 ## First hotel and administrator
 
 Set the six `BOOTSTRAP_*` variables documented at the bottom of `.env.example`,
-then run `npm run bootstrap:admin`. The command is idempotent: rerunning it checks
+then run `pnpm run bootstrap:admin`. The command is idempotent: rerunning it checks
 the same hotel/admin and refreshes the system permission mappings without resetting
 the administrator password.
 
@@ -76,7 +76,7 @@ After bootstrapping a new, otherwise empty hotel, load a large time-relative
 dataset with:
 
 ```bash
-npm run seed:realistic
+pnpm run seed:realistic
 ```
 
 This creates 96 rooms plus thousands of guests, reservations, folio charges,

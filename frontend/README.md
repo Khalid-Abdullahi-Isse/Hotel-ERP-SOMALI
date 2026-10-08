@@ -5,8 +5,8 @@ A lightweight Next.js App Router frontend for hotel operations. The NestJS backe
 ## Start locally
 
 ```bash
-npm install
-npm run dev
+pnpm install
+pnpm run dev
 ```
 
 The frontend runs at `http://localhost:3000`. Configure the separate backend URL in `.env.local`:

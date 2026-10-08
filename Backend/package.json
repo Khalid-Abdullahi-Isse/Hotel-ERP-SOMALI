@@ -10,6 +10,7 @@
   "type": "module",
   "scripts": {
     "build": "nest build",
+    "dev": "nest start --watch",
     "start": "node dist/main.js",
     "start:dev": "nest start --watch",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\" \"docs/**/*.md\" \"*.{json,md,yml,yaml}\" && prisma format",
@@ -36,6 +37,7 @@
     "seed:accounting:3y": "node scripts/seed-accounting-three-years.mjs",
     "seed:accounting:full": "node scripts/seed-accounting-full.mjs",
     "seed:large-safe": "node scripts/seed-large-safe.mjs",
+    "seed:presentation": "tsx scripts/presentation-seed.mjs",
     "load:smoke": "node scripts/load-smoke.mjs",
     "backup": "powershell -NoProfile -File scripts/backup.ps1",
     "restore:drill": "powershell -NoProfile -File scripts/restore-drill.ps1",
@@ -60,6 +62,7 @@
     "class-validator": "^0.14.2",
     "cookie-parser": "^1.4.7",
     "dotenv": "^17.4.2",
+    "express": "5.1.0",
     "helmet": "^8.1.0",
     "nestjs-pino": "^4.4.1",
     "pg": "^8.16.3",
@@ -96,11 +99,5 @@
     "tsx": "^4.23.12",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.46.4"
-  },
-  "overrides": {
-    "deepmerge-ts": "^8.0.1",
-    "@nestjs/swagger": {
-      "js-yaml": "^5.3.0"
-    }
   }
 }

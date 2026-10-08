@@ -118,9 +118,13 @@ export class TenantHttpCacheInterceptor implements NestInterceptor {
           clearTimeout(timer);
           resolve(value);
         },
-        (error) => {
+        (error: unknown) => {
           clearTimeout(timer);
-          reject(error);
+          reject(
+            error instanceof Error
+              ? error
+              : new Error('Redis cache operation rejected', { cause: error }),
+          );
         },
       );
     });

@@ -27,9 +27,9 @@ platform's secret store.
 
 ```bash
 docker compose up -d postgres
-npm ci
-npm run db:deploy
-npm run db:roles:production
+pnpm install --frozen-lockfile
+pnpm run db:deploy
+pnpm run db:roles:production
 docker compose -f docker-compose.yml -f docker-compose.production.yml up -d --build api
 ```
 
@@ -37,14 +37,14 @@ docker compose -f docker-compose.yml -f docker-compose.production.yml up -d --bu
 from the process environment without placing them in SQL command arguments. Use the
 schema-owner URL only for reviewed migrations and bootstrap, never for the API.
 
-Set the `BOOTSTRAP_*` variables, run `npm run bootstrap:admin` once, and remove those
+Set the `BOOTSTRAP_*` variables, run `pnpm run bootstrap:admin` once, and remove those
 password variables from the environment afterward.
 
 ## 4. Release procedure
 
 1. Create and verify a backup before database changes.
-2. Run `npm ci`, audit, lint, tests, build, and Prisma validation in CI.
-3. Review migration SQL, then run `npm run db:deploy` with the migration role.
+2. Run `pnpm install --frozen-lockfile`, audit, lint, tests, build, and Prisma validation in CI.
+3. Review migration SQL, then run `pnpm run db:deploy` with the migration role.
 4. Build an immutable image and record its digest/version.
 5. Recreate the API with the production Compose overlay.
 6. Verify live, ready, authenticated login, one hotel read, and metrics.
@@ -72,8 +72,8 @@ monitor/log system is responsible for durable history and notification delivery.
 On Windows/local rehearsal:
 
 ```powershell
-npm run backup -- -DestinationDirectory D:\hotel-backups
-npm run restore:drill -- -BackupFile D:\hotel-backups\hotel-erp-YYYYMMDD-HHMMSS.dump
+pnpm run backup -- -DestinationDirectory D:\hotel-backups
+pnpm run restore:drill -- -BackupFile D:\hotel-backups\hotel-erp-YYYYMMDD-HHMMSS.dump
 ```
 
 Schedule nightly encrypted custom-format dumps, copy them off the database host, and

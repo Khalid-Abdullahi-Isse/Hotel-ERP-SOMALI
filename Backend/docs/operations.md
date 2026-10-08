@@ -17,7 +17,7 @@ restore into a clean database counts.
 The tested Windows helper copies the dump out of the container and prints its path:
 
 ```powershell
-npm run backup -- -DestinationDirectory D:\hotel-backups
+pnpm run backup -- -DestinationDirectory D:\hotel-backups
 ```
 
 The equivalent direct command is:
@@ -36,7 +36,7 @@ The tested helper only accepts temporary database names beginning with
 `hotel_erp_restore_`:
 
 ```powershell
-npm run restore:drill -- -BackupFile D:\hotel-backups\hotel-erp-YYYYMMDD-HHMMSS.dump
+pnpm run restore:drill -- -BackupFile D:\hotel-backups\hotel-erp-YYYYMMDD-HHMMSS.dump
 ```
 
 ```bash
@@ -63,7 +63,7 @@ Use separate roles:
   triggers, or audit logs
 - backup role: read-only permissions required by `pg_dump`
 
-Run `npm run db:roles:production` with separate `APP_POSTGRES_PASSWORD` and
+Run `pnpm run db:roles:production` with separate `APP_POSTGRES_PASSWORD` and
 `BACKUP_POSTGRES_PASSWORD` environment variables. Production Compose requires
 `APP_DATABASE_URL` and will not fall back to the schema owner.
 
