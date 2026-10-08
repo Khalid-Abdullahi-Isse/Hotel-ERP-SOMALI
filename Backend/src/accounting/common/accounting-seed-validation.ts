@@ -4,8 +4,12 @@ export type SeedJournalEntryLine = {
   credit: number | string;
 };
 
+function isArray(value: unknown): boolean {
+  return Array.isArray(value);
+}
+
 export function assertBalancedSeedEntry(lines: readonly SeedJournalEntryLine[]) {
-  if (!Array.isArray(lines) || lines.length < 2) {
+  if (!isArray(lines) || lines.length < 2) {
     throw new Error('Seed journal entry must contain at least two lines.');
   }
 
@@ -25,7 +29,9 @@ export function assertBalancedSeedEntry(lines: readonly SeedJournalEntryLine[]) 
       throw new Error(`Seed journal line for ${accountCode} has an invalid numeric value.`);
     }
     if (debit < 0 || credit < 0) {
-      throw new Error(`Seed journal line for ${accountCode} cannot include a negative debit or credit.`);
+      throw new Error(
+        `Seed journal line for ${accountCode} cannot include a negative debit or credit.`,
+      );
     }
     if (debit > 0 && credit > 0) {
       throw new Error(`Seed journal line for ${accountCode} cannot be both debited and credited.`);

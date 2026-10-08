@@ -97,10 +97,7 @@ describe('Expense approval workflow', () => {
     };
   }
 
-  async function createExpense(
-    token: string,
-    overrides: Record<string, unknown> = {},
-  ) {
+  async function createExpense(token: string, overrides: Record<string, unknown> = {}) {
     return api()
       .post('/api/v1/expenses')
       .set('Authorization', `Bearer ${token}`)
@@ -360,7 +357,9 @@ async function insertUser(
 async function seedSecurityData(
   pool: Pool,
   passwordHash: string,
-): Promise<{ hotelId: string; adminId: string; managerId: string; staffId: string }> {
+): Promise<
+  Pick<Seed, 'hotelId' | 'adminId' | 'managerId' | 'staffId' | 'managerRoleId' | 'staffRoleId'>
+> {
   const hotelId = randomUUID();
   await pool.query(
     `INSERT INTO "Hotel" (id, code, name, "updatedAt") VALUES ($1, 'EXP-TEST', 'Expense Test Hotel', now())`,
@@ -396,19 +395,35 @@ async function seedSecurityData(
   }
 
   const adminId = await insertUser(
-    pool, hotelId, 'admin', passwordHash,
+    pool,
+    hotelId,
+    'admin',
+    passwordHash,
     requiredMapValue(roleIds, SYSTEM_ROLES.ADMIN),
   );
   const managerId = await insertUser(
-    pool, hotelId, 'manager', passwordHash,
+    pool,
+    hotelId,
+    'manager',
+    passwordHash,
     requiredMapValue(roleIds, SYSTEM_ROLES.MANAGER),
   );
   const staffId = await insertUser(
-    pool, hotelId, 'staff', passwordHash,
+    pool,
+    hotelId,
+    'staff',
+    passwordHash,
     requiredMapValue(roleIds, SYSTEM_ROLES.STAFF),
   );
 
-  return { hotelId, adminId, managerId, staffId };
+  return {
+    hotelId,
+    adminId,
+    managerId,
+    staffId,
+    managerRoleId: requiredMapValue(roleIds, SYSTEM_ROLES.MANAGER),
+    staffRoleId: requiredMapValue(roleIds, SYSTEM_ROLES.STAFF),
+  };
 }
 
 async function seedAccountingData(

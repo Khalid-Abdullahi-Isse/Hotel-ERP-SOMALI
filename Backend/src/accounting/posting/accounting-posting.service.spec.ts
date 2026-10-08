@@ -34,8 +34,6 @@ describe('AccountingPostingService fiscal-period enforcement', () => {
     permissions: [],
   } as unknown as RequestUser;
 
-  type Tx = Prisma.TransactionClient;
-
   function serviceWith(
     tx: Partial<Record<keyof Prisma.TransactionClient, unknown>>,
     periods: { resolvePeriodForDate: jest.Mock },
@@ -62,12 +60,10 @@ describe('AccountingPostingService fiscal-period enforcement', () => {
         findFirst: jest.fn().mockResolvedValue({ id: 'journal-1' }),
       },
       account: {
-        findMany: jest
-          .fn()
-          .mockResolvedValue([
-            { id: 'a1', allowManualPosting: true },
-            { id: 'a2', allowManualPosting: true },
-          ]),
+        findMany: jest.fn().mockResolvedValue([
+          { id: 'a1', allowManualPosting: true },
+          { id: 'a2', allowManualPosting: true },
+        ]),
       },
       journalEntry: {
         create: jest.fn().mockResolvedValue({
@@ -98,13 +94,13 @@ describe('AccountingPostingService fiscal-period enforcement', () => {
       actor,
     );
 
-    expect(periods.resolvePeriodForDate).toHaveBeenCalledWith(
-      tx,
-      actor.hotelId,
-      '2026-08-15',
-      { allowCreate: true },
-    );
-    const createPayload = (tx.journalEntry.create as jest.Mock).mock.calls[0][0];
+    expect(periods.resolvePeriodForDate).toHaveBeenCalledWith(tx, actor.hotelId, '2026-08-15', {
+      allowCreate: true,
+    });
+    const createCalls = tx.journalEntry.create.mock.calls as unknown as Array<
+      [{ data: { fiscalPeriodId: string } }]
+    >;
+    const createPayload = createCalls[0][0];
     expect(createPayload.data.fiscalPeriodId).toBe('period-1');
   });
 
@@ -129,12 +125,10 @@ describe('AccountingPostingService fiscal-period enforcement', () => {
         findFirst: jest.fn().mockResolvedValue({ id: 'journal-1' }),
       },
       account: {
-        findMany: jest
-          .fn()
-          .mockResolvedValue([
-            { id: 'a1', allowManualPosting: true },
-            { id: 'a2', allowManualPosting: true },
-          ]),
+        findMany: jest.fn().mockResolvedValue([
+          { id: 'a1', allowManualPosting: true },
+          { id: 'a2', allowManualPosting: true },
+        ]),
       },
     };
     const periods = {

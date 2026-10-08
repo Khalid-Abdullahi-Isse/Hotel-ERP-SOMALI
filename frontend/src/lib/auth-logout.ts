@@ -3,7 +3,7 @@ import "server-only";
 import { cookies } from "next/headers";
 import { ACCESS_COOKIE, REFRESH_COOKIE } from "@/lib/auth-cookies";
 import { refreshSession } from "@/lib/auth-session";
-import { API_URL } from "@/lib/config";
+import { backendFetch } from "@/lib/backend-fetch";
 
 export async function revokeBackendSession(allSessions = false): Promise<void> {
   const cookieStore = await cookies();
@@ -17,7 +17,7 @@ export async function revokeBackendSession(allSessions = false): Promise<void> {
 
   const endpoint = allSessions ? "/auth/logout-all" : "/auth/logout";
   const request = (token: string) =>
-    fetch(`${API_URL}${endpoint}`, {
+    backendFetch(endpoint, {
       method: "POST",
       headers: { Accept: "application/json", Authorization: `Bearer ${token}` },
       cache: "no-store",

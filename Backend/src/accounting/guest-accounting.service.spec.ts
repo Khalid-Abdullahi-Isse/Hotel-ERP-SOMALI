@@ -1,4 +1,4 @@
-import { Decimal } from '@prisma/client-runtime-utils';
+import { Decimal } from '@prisma/client/runtime/client';
 import type { Prisma } from '../generated/prisma/client.js';
 import { ChargeType } from '../generated/prisma/enums.js';
 import type { RequestUser } from '../auth/auth.types.js';
@@ -6,8 +6,8 @@ import { GuestAccountingService } from './guest-accounting.service.js';
 import type { AccountingPostingService } from './posting/accounting-posting.service.js';
 
 jest.mock('../generated/prisma/client.js', () => {
-  const runtime = jest.requireActual<typeof import('@prisma/client-runtime-utils')>(
-    '@prisma/client-runtime-utils',
+  const runtime = jest.requireActual<typeof import('@prisma/client/runtime/client')>(
+    '@prisma/client/runtime/client',
   );
   return { Prisma: { Decimal: runtime.Decimal } };
 });

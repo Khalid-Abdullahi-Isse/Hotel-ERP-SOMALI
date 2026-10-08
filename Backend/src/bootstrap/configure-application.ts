@@ -3,11 +3,24 @@ import { ConfigService } from '@nestjs/config';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
-import { json, urlencoded, type NextFunction, type Request, type Response } from 'express';
-import helmet from 'helmet';
+import {
+  json,
+  urlencoded,
+  type NextFunction,
+  type Request,
+  type RequestHandler,
+  type Response,
+} from 'express';
+import helmetImport, { type HelmetOptions } from 'helmet';
 import { Logger } from 'nestjs-pino';
 import { AllExceptionsFilter } from '../common/filters/all-exceptions.filter.js';
 import { safeRequestId } from '../common/http/request-id.js';
+
+// Keep a static import so Vercel bundles Helmet. Its tracer interprets the
+// default-export type differently, so verify the published callable API here.
+const helmetModule: unknown = helmetImport;
+if (typeof helmetModule !== 'function') throw new Error('Helmet middleware factory is unavailable');
+const helmet = helmetModule as (options?: HelmetOptions) => RequestHandler;
 
 export function configureApplication(app: NestExpressApplication): {
   config: ConfigService;

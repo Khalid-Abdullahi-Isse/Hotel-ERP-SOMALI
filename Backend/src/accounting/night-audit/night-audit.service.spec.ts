@@ -1,4 +1,9 @@
 import { ConflictException } from '@nestjs/common';
+import type { RequestUser } from '../../auth/auth.types.js';
+import type { PrismaService } from '../../prisma/prisma.service.js';
+import type { AuditLogsService } from '../../audit-logs/audit-logs.service.js';
+import type { GuestAccountingService } from '../guest-accounting.service.js';
+import type { Prisma } from '../../generated/prisma/client.js';
 
 jest.mock('../../common/database/serializable-transaction.js', () => ({
   runSerializable: (prisma: unknown, fn: (tx: unknown) => unknown) => fn(prisma),
@@ -36,11 +41,16 @@ jest.mock('../../generated/prisma/client.js', () => ({
 import { NightAuditService } from './night-audit.service.js';
 
 describe('NightAuditService', () => {
-  const actor = {
+  const actor: RequestUser = {
     id: '10000000-0000-4000-8000-000000000001',
     hotelId: '20000000-0000-4000-8000-000000000001',
     permissions: [],
-  } as any;
+    sessionId: 'session-1',
+    email: 'audit@example.com',
+    username: 'auditor',
+    fullName: 'Night Auditor',
+    roles: [],
+  };
 
   it('posts one room-night per reservation room per business date and totals the day', async () => {
     const reservationRooms = [
@@ -75,7 +85,12 @@ describe('NightAuditService', () => {
       },
       reservationRoomNight: {
         findUnique: jest.fn().mockResolvedValue(null),
-        create: jest.fn().mockImplementation(async ({ data }) => ({ id: data.reservationRoomId, ...data })),
+        create: jest
+          .fn()
+          .mockImplementation(
+            ({ data }: { data: Prisma.ReservationRoomNightUncheckedCreateInput }) =>
+              Promise.resolve({ id: data.reservationRoomId, ...data }),
+          ),
         aggregate: jest.fn().mockResolvedValue({
           _sum: { amount: '230.00' },
           _count: 2,
@@ -87,7 +102,7 @@ describe('NightAuditService', () => {
           id: 'business-date-1',
           hotelId: actor.hotelId,
           businessDate: '2026-09-12',
-            status: 'OPEN',
+          status: 'OPEN',
         }),
         update: jest.fn().mockResolvedValue({
           id: 'business-date-1',
@@ -100,7 +115,11 @@ describe('NightAuditService', () => {
       },
     };
 
-    const service = new NightAuditService(prisma as any, { record: jest.fn() } as any, guestAccounting as any);
+    const service = new NightAuditService(
+      prisma as unknown as PrismaService,
+      { record: jest.fn() } as unknown as AuditLogsService,
+      guestAccounting as unknown as GuestAccountingService,
+    );
 
     const result = await service.postBusinessDate(actor.hotelId, '2026-09-12', actor);
 
@@ -123,10 +142,14 @@ describe('NightAuditService', () => {
       },
     };
 
-    const service = new NightAuditService(prisma as any, { record: jest.fn() } as any, { postCharge: jest.fn() } as any);
-
-    await expect(service.advanceBusinessDate(actor.hotelId, '2026-09-12', actor)).rejects.toBeInstanceOf(
-      ConflictException,
+    const service = new NightAuditService(
+      prisma as unknown as PrismaService,
+      { record: jest.fn() } as unknown as AuditLogsService,
+      { postCharge: jest.fn() } as unknown as GuestAccountingService,
     );
+
+    await expect(
+      service.advanceBusinessDate(actor.hotelId, '2026-09-12', actor),
+    ).rejects.toBeInstanceOf(ConflictException);
   });
 });

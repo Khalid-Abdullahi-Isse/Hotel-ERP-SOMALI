@@ -1,5 +1,16 @@
 {
-  "dependencies": {
-    "@keyv/redis": "^5.1.6"
+  "name": "hotel-erp-somali",
+  "private": true,
+  "packageManager": "pnpm@11.25.0",
+  "engines": { "node": ">=22.12.0" },
+  "scripts": {
+    "dev": "pnpm run dev:all",
+    "dev:all": "pnpm --parallel --filter somali-hotel-erp-backend --filter frontend run dev",
+    "dev:backend": "pnpm --filter somali-hotel-erp-backend run dev",
+    "dev:frontend": "pnpm --filter frontend run dev",
+    "build": "pnpm -r run build",
+    "install:all": "pnpm install",
+    "infra:up": "docker compose -f Backend/docker-compose.yml --env-file Backend/.env up -d postgres redis",
+    "infra:down": "docker compose -f Backend/docker-compose.yml --env-file Backend/.env stop postgres redis"
   }
 }

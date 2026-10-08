@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import path from "node:path";
 
 const isDevelopment = process.env.NODE_ENV !== "production";
 const scriptSources = isDevelopment
@@ -8,7 +9,7 @@ const connectSources = "connect-src 'self'";
 
 const nextConfig: NextConfig = {
   turbopack: {
-    root: __dirname,
+    root: path.resolve(__dirname, ".."),
   },
   async headers() {
     return [{ source: "/(.*)", headers: [
