@@ -980,11 +980,11 @@ Create an example file:
 
 Install:
 
-* Node.js
-* npm / pnpm
-* PostgreSQL
+* Node.js 24 or Node.js 22 LTS
+* pnpm 11.25.0
+* PostgreSQL and Redis (available through Docker Compose)
 * Git
-* Docker Desktop — optional for local development
+* Docker Desktop with Compose for the documented local infrastructure commands
 
 ---
 
@@ -1024,53 +1024,34 @@ git switch main
 
 ---
 
-# Install Dependencies
+# Local development
 
-If frontend and backend are separate applications:
+Requires Node.js 24 (Node 22 LTS is also supported), pnpm 11.25.0, and Docker with Compose for PostgreSQL and Redis. Run commands from the repository root.
+
+```powershell
+Copy-Item Backend/.env.example Backend/.env
+```
+
+Set the development values in the ignored `Backend/.env` file. Use `PORT=3005`, `DATABASE_URL` pointing to PostgreSQL on `localhost:5433`, and `REDIS_URL=redis://127.0.0.1:6380`. Set `POSTGRES_PASSWORD` to match the password in `DATABASE_URL`, and set a unique `JWT_ACCESS_SECRET` of at least 32 characters. The frontend defaults to `http://localhost:3005/api/v1`; use ignored `frontend/.env.local` with `API_URL` or `NEXT_PUBLIC_API_URL` only if your API URL differs.
 
 ```bash
-cd backend
-npm install
+pnpm install
+pnpm infra:up
+pnpm --filter somali-hotel-erp-backend run db:deploy
+pnpm --filter somali-hotel-erp-backend run prisma:generate
+pnpm dev
 ```
 
-Then:
+Run `db:deploy` only when setting up a new database or applying reviewed migrations. `pnpm infra:up` starts the existing PostgreSQL and Redis containers without removing their volumes. After initial setup, use `pnpm infra:up` when those services are stopped, then `pnpm dev` to run both apps with labeled backend and frontend output.
 
-```bash
-cd ../frontend
-npm install
-```
+| Service | URL |
+| --- | --- |
+| Frontend | http://localhost:3000 |
+| Backend health | http://localhost:3005/api/v1/health/live |
+| Backend readiness | http://localhost:3005/api/v1/health/ready |
+| Swagger | http://localhost:3005/docs |
 
----
-
-# Start Backend
-
-```bash
-cd backend
-npm run start:dev
-```
-
-Typical development API:
-
-```text
-http://localhost:3005
-```
-
-The backend Docker stack exposes the API on port 3005 to avoid collisions with other local services that commonly use 3001.
-
----
-
-# Start Frontend
-
-```bash
-cd frontend
-npm run dev
-```
-
-Typical frontend:
-
-```text
-http://localhost:3000
-```
+Other commands: `pnpm dev:backend`, `pnpm dev:frontend`, `pnpm build`, and `pnpm infra:down` (stops infrastructure without deleting data).
 
 ---
 

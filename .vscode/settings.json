@@ -1,0 +1,6 @@
+{
+  "terminal.integrated.cwd": "${workspaceFolder}",
+  "terminal.integrated.env.windows": {
+    "Path": "${env:APPDATA}\\npm;C:\\Program Files\\nodejs;${env:Path}"
+  }
+}

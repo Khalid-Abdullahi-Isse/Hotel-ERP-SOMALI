@@ -91,7 +91,7 @@ query patterns exist.
 2. Add any required PostgreSQL-native constraints to that migration.
 3. Test on a disposable database and run integrity tests.
 4. Back up production before deployment.
-5. Run `npm run db:deploy` once per release.
+5. Run `pnpm run db:deploy` once per release.
 6. Prefer additive, backward-compatible changes; split destructive changes into
    expand/migrate/contract releases.
 

@@ -37,6 +37,7 @@
     "seed:accounting:3y": "node scripts/seed-accounting-three-years.mjs",
     "seed:accounting:full": "node scripts/seed-accounting-full.mjs",
     "seed:large-safe": "node scripts/seed-large-safe.mjs",
+    "seed:presentation": "tsx scripts/presentation-seed.mjs",
     "load:smoke": "node scripts/load-smoke.mjs",
     "backup": "powershell -NoProfile -File scripts/backup.ps1",
     "restore:drill": "powershell -NoProfile -File scripts/restore-drill.ps1",

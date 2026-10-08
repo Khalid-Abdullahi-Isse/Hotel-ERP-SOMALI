@@ -3,7 +3,8 @@ name: somali-hotel-erp
 services:
   api:
     build:
-      context: .
+      context: ..
+      dockerfile: Backend/Dockerfile
       target: production
     restart: unless-stopped
     environment:

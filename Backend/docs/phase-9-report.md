@@ -38,7 +38,7 @@ benefit large enough to justify its write and storage cost.
 
 ## Delivered tooling
 
-`npm run load:smoke` runs the dependency-free load harness. Configuration is provided
+`pnpm run load:smoke` runs the dependency-free load harness. Configuration is provided
 through `LOAD_IDENTIFIER`, `LOAD_PASSWORD`, `LOAD_REQUESTS`, `LOAD_CONCURRENCY`, and
 optional `LOAD_PATHS` environment variables. The normal 100-request/minute limit stays
 enabled; only an isolated profiling environment should temporarily raise

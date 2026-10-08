@@ -16,8 +16,8 @@ The command refuses to run unless all of these conditions are true:
 
 1. Create an isolated database such as `hotel_erp_demo` and deploy migrations to it.
 2. Point `DATABASE_URL` at that database.
-3. Run `npm run bootstrap:admin` once with the documented bootstrap environment variables.
+3. Run `pnpm run bootstrap:admin` once with the documented bootstrap environment variables.
 4. Set all `DEMO_*` variables shown in `.env.example`.
-5. Run `npm run demo:reset`.
+5. Run `pnpm run demo:reset`.
 
 The reset preserves bootstrapped users and roles, revokes their sessions, clears hotel-scoped operational and accounting records in one transaction, resets the demo manager password from the environment, and creates 12 available rooms including Deluxe King room 204. It never prints a password.
