@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist_Mono, Roboto } from "next/font/google";
 import { QueryProvider } from "@/components/providers/query-provider";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 const roboto = Roboto({
@@ -34,6 +35,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className={`${roboto.className} flex min-h-full flex-col`}>
         <QueryProvider>{children}</QueryProvider>
+        <Analytics />
       </body>
     </html>
   );
