@@ -1,10 +1,14 @@
 name: Hotel ERP CI
 
+permissions:
+  contents: read
+
 on:
   push:
     branches:
       - main
       - Khalid-dev
+      - codex/vercel-preview-ci
 
   pull_request:
     branches:
@@ -77,19 +81,19 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          version: 11.25.0
+          persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 24
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+        with:
+          version: 11.25.0
 
       - name: Install backend dependencies
         run: pnpm install --frozen-lockfile
@@ -99,6 +103,12 @@ jobs:
 
       - name: Validate Prisma schema
         run: pnpm --filter somali-hotel-erp-backend run prisma:validate
+
+      - name: Lint backend
+        run: pnpm --filter somali-hotel-erp-backend run lint
+
+      - name: Type-check backend
+        run: pnpm --filter somali-hotel-erp-backend exec tsc --noEmit --incremental false
 
       - name: Run backend unit tests
         run: pnpm --filter somali-hotel-erp-backend test
@@ -117,27 +127,35 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
         with:
           version: 11.25.0
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Lint frontend
+        run: pnpm --filter frontend run lint
+
+      - name: Type-check frontend
+        run: pnpm --filter frontend exec tsc --noEmit --incremental false
 
       - name: Run frontend tests
         run: pnpm --filter frontend run test:run
 
       - name: Build Next.js frontend
+        env:
+          NODE_ENV: production
         run: pnpm --filter frontend build
 
 
